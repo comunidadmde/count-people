@@ -3,23 +3,47 @@ import { getDatabase } from '@/lib/mongodb';
 
 export interface CounterData {
   doorId: string;
-  count: number;
   timestamp: Date;
   ipAddress?: string;
   userName?: string;
 }
 
-// GET - Retrieve all counters
+// GET - Retrieve all counters with aggregated counts per door
 export async function GET() {
   try {
     const db = await getDatabase();
+    
+    // Get all counter records
     const counters = await db
       .collection('counters')
       .find({})
       .sort({ timestamp: -1 })
       .toArray();
 
-    return NextResponse.json({ success: true, data: counters });
+    // Get aggregated counts per door
+    const doorCounts = await db
+      .collection('counters')
+      .aggregate([
+        {
+          $group: {
+            _id: '$doorId',
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    // Create a map of door counts
+    const countsMap: Record<string, number> = {};
+    doorCounts.forEach((item) => {
+      countsMap[item._id] = item.count;
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: counters,
+      doorCounts: countsMap,
+    });
   } catch (error) {
     console.error('Error fetching counters:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -82,27 +106,26 @@ function getClientIP(request: NextRequest): string {
   return 'unknown';
 }
 
-// POST - Save counter data
+// POST - Save counter click (just a record, count is calculated from number of records)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { doorId, count, userName } = body;
+    const { doorId, userName } = body;
 
-    if (!doorId || typeof count !== 'number') {
+    if (!doorId) {
       return NextResponse.json(
-        { success: false, error: 'Invalid data. doorId and count are required.' },
+        { success: false, error: 'Invalid data. doorId is required.' },
         { status: 400 }
       );
     }
 
     // Get client IP address
     const ipAddress = getClientIP(request);
-    console.log('Saving counter with IP:', ipAddress);
+    console.log('Saving counter click with IP:', ipAddress);
 
     const db = await getDatabase();
     const counterData: CounterData = {
       doorId,
-      count,
       timestamp: new Date(),
       ipAddress,
       userName: userName || 'Anonymous',
@@ -110,9 +133,13 @@ export async function POST(request: NextRequest) {
 
     const result = await db.collection('counters').insertOne(counterData);
 
+    // Get the new count for this door
+    const doorCount = await db.collection('counters').countDocuments({ doorId });
+
     return NextResponse.json({
       success: true,
       data: { ...counterData, _id: result.insertedId },
+      count: doorCount,
     });
   } catch (error) {
     console.error('Error saving counter:', error);

@@ -11,7 +11,6 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 interface CounterData {
   _id: string;
   doorId: string;
-  count: number;
   timestamp: string;
   ipAddress?: string;
   userName?: string;
@@ -20,7 +19,7 @@ interface CounterData {
 interface DoorSummary {
   doorId: string;
   doorName: string;
-  latestCount: number;
+  count: number;
   lastUpdated: string | null;
 }
 
@@ -37,6 +36,34 @@ export default function AdminDashboardClient() {
     'door-3': 'Back Door',
   };
 
+  // Utility function to process counter data and calculate door statistics
+  const processCounterData = useCallback((counters: CounterData[], doorCounts: Record<string, number>) => {
+    const doorIds = ['door-1', 'door-2', 'door-3'];
+    
+    return doorIds.map((doorId) => {
+      // Filter counters for this door
+      const doorCounters = counters.filter((c) => c.doorId === doorId);
+      
+      // Sort by timestamp to get the latest
+      const sortedCounters = doorCounters.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      // Get latest timestamp
+      const latestCounter = sortedCounters[0];
+      
+      // Get count from backend aggregation
+      const count = doorCounts[doorId] || 0;
+      
+      return {
+        doorId,
+        doorName: doorNames[doorId] || doorId,
+        count,
+        lastUpdated: latestCounter?.timestamp || null,
+      };
+    });
+  }, []);
+
   // AG Grid column definitions
   const columnDefs: ColDef[] = useMemo(
     () => [
@@ -46,22 +73,16 @@ export default function AdminDashboardClient() {
         width: 150,
         valueGetter: (params: ValueGetterParams) => doorNames[params.data.doorId] || params.data.doorId,
         sortable: true,
-        filter: true,
-      },
-      {
-        field: 'count',
-        headerName: 'Count',
-        width: 100,
-        sortable: true,
-        filter: true,
-        cellStyle: () => ({ fontWeight: 'bold' }),
+        filter: 'agTextColumnFilter',
+        floatingFilter: true,
       },
       {
         field: 'userName',
         headerName: 'Name',
         width: 150,
         sortable: true,
-        filter: true,
+        filter: 'agTextColumnFilter',
+        floatingFilter: true,
         valueGetter: (params: ValueGetterParams) => params.data.userName || 'Anonymous',
       },
       {
@@ -69,7 +90,8 @@ export default function AdminDashboardClient() {
         headerName: 'IP Address',
         width: 150,
         sortable: true,
-        filter: true,
+        filter: 'agTextColumnFilter',
+        floatingFilter: true,
         valueGetter: (params: ValueGetterParams) => params.data.ipAddress || 'N/A',
         cellStyle: () => ({ fontFamily: 'monospace', fontSize: '0.875rem' }),
       },
@@ -78,7 +100,20 @@ export default function AdminDashboardClient() {
         headerName: 'Timestamp',
         width: 200,
         sortable: true,
-        filter: true,
+        filter: 'agDateColumnFilter',
+        floatingFilter: true,
+        filterParams: {
+          comparator: (filterLocalDateAtMidnight: Date, cellValue: string) => {
+            const cellDate = new Date(cellValue);
+            if (cellDate < filterLocalDateAtMidnight) {
+              return -1;
+            } else if (cellDate > filterLocalDateAtMidnight) {
+              return 1;
+            } else {
+              return 0;
+            }
+          },
+        },
         valueGetter: (params: ValueGetterParams) => new Date(params.data.timestamp).toLocaleString(),
         comparator: (valueA: any, valueB: any, nodeA: any, nodeB: any) => {
           const dateA = new Date(nodeA.data.timestamp).getTime();
@@ -96,6 +131,7 @@ export default function AdminDashboardClient() {
       resizable: true,
       sortable: true,
       filter: true,
+      floatingFilter: true,
     }),
     []
   );
@@ -108,26 +144,8 @@ export default function AdminDashboardClient() {
       if (result.success) {
         setAllCounters(result.data);
 
-        // Get latest count for each door
-        const summaries: DoorSummary[] = ['door-1', 'door-2', 'door-3'].map(
-          (doorId) => {
-            const doorCounters = result.data
-              .filter((c: CounterData) => c.doorId === doorId)
-              .sort(
-                (a: CounterData, b: CounterData) =>
-                  new Date(b.timestamp).getTime() -
-                  new Date(a.timestamp).getTime()
-              );
-
-            return {
-              doorId,
-              doorName: doorNames[doorId] || doorId,
-              latestCount: doorCounters[0]?.count || 0,
-              lastUpdated: doorCounters[0]?.timestamp || null,
-            };
-          }
-        );
-
+        // Process counter data to get door summaries using aggregated counts from backend
+        const summaries = processCounterData(result.data, result.doorCounts || {});
         setDoors(summaries);
       }
     } catch (error) {
@@ -138,7 +156,7 @@ export default function AdminDashboardClient() {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [processCounterData]);
 
   useEffect(() => {
     // Initial load
@@ -239,13 +257,20 @@ export default function AdminDashboardClient() {
                   key={door.doorId}
                   className="bg-white rounded-lg shadow-lg p-6 border-2 border-gray-200"
                 >
-                  <h2 className="text-xl font-bold text-gray-800 mb-2">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4">
                     {door.doorName}
                   </h2>
-                  <div className="text-4xl font-bold text-blue-600 mb-2">
-                    {door.latestCount}
+                  
+                  <div className="mb-4">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm text-gray-600">Count:</span>
+                      <span className="text-4xl font-bold text-blue-600">
+                        {door.count}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">
+                  
+                  <p className="text-xs text-gray-500 mb-4">
                     {door.lastUpdated
                       ? `Last updated: ${new Date(
                           door.lastUpdated

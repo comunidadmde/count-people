@@ -19,37 +19,22 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase();
 
     if (doorId) {
-      // Reset specific door by inserting a reset record with count 0
-      const resetData = {
-        doorId,
-        count: 0,
-        timestamp: new Date(),
-        resetBy: 'admin',
-      };
-
-      await db.collection('counters').insertOne(resetData);
+      // Reset specific door by deleting all records for that door
+      const result = await db.collection('counters').deleteMany({ doorId });
 
       return NextResponse.json({
         success: true,
-        message: `Counter for door ${doorId} has been reset`,
+        message: `Counter for door ${doorId} has been reset (${result.deletedCount} records deleted)`,
       });
     } else {
-      // Reset all doors
-      const doors = ['door-1', 'door-2', 'door-3'];
-      const resetPromises = doors.map((id) =>
-        db.collection('counters').insertOne({
-          doorId: id,
-          count: 0,
-          timestamp: new Date(),
-          resetBy: 'admin',
-        })
-      );
-
-      await Promise.all(resetPromises);
+      // Reset all doors by deleting all records
+      const result = await db.collection('counters').deleteMany({
+        doorId: { $in: ['door-1', 'door-2', 'door-3'] },
+      });
 
       return NextResponse.json({
         success: true,
-        message: 'All counters have been reset',
+        message: `All counters have been reset (${result.deletedCount} records deleted)`,
       });
     }
   } catch (error) {

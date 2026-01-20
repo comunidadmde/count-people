@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 
-// GET - Get latest count for a specific door
+// GET - Get count for a specific door (count of records)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ doorId: string }> }
@@ -9,6 +9,11 @@ export async function GET(
   try {
     const { doorId } = await params;
     const db = await getDatabase();
+    
+    // Count the number of records for this door
+    const count = await db.collection('counters').countDocuments({ doorId });
+    
+    // Get the latest record for timestamp
     const latestCounter = await db
       .collection('counters')
       .findOne(
@@ -16,14 +21,14 @@ export async function GET(
         { sort: { timestamp: -1 } }
       );
 
-    if (!latestCounter) {
-      return NextResponse.json({
-        success: true,
-        data: { doorId, count: 0 },
-      });
-    }
-
-    return NextResponse.json({ success: true, data: latestCounter });
+    return NextResponse.json({
+      success: true,
+      data: {
+        doorId,
+        count,
+        lastUpdated: latestCounter?.timestamp || null,
+      },
+    });
   } catch (error) {
     console.error('Error fetching door counter:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
