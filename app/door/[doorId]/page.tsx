@@ -1,5 +1,6 @@
 import DoorCounter from '@/app/components/DoorCounter';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 
 const doorNames: Record<string, string> = {
   'door-1': 'Main Entrance',
@@ -23,12 +24,12 @@ export default async function DoorPage({
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <a
+          <Link
             href="/"
             className="text-blue-600 hover:text-blue-800 inline-flex items-center mb-4"
           >
             ← Back to Home
-          </a>
+          </Link>
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
             {doorName}
           </h1>

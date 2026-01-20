@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface CounterData {
   _id: string;
@@ -30,11 +31,7 @@ export default function AdminDashboardClient() {
     'door-3': 'Back Door',
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const response = await fetch('/api/counters');
       const result = await response.json();
@@ -69,7 +66,11 @@ export default function AdminDashboardClient() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleReset = async (doorId?: string) => {
     if (
@@ -129,12 +130,12 @@ export default function AdminDashboardClient() {
             <p className="text-gray-600">Manage all door counters</p>
           </div>
           <div className="flex gap-4">
-            <a
+            <Link
               href="/"
               className="px-4 py-2 text-gray-700 hover:text-gray-900"
             >
               Home
-            </a>
+            </Link>
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
