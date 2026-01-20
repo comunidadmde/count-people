@@ -5,6 +5,7 @@ export interface CounterData {
   doorId: string;
   count: number;
   timestamp: Date;
+  ipAddress?: string;
 }
 
 // GET - Retrieve all counters
@@ -34,6 +35,30 @@ export async function GET() {
   }
 }
 
+// Helper function to get client IP address
+function getClientIP(request: NextRequest): string {
+  // Check various headers for IP address (handles proxies, load balancers, etc.)
+  const forwarded = request.headers.get('x-forwarded-for');
+  const realIP = request.headers.get('x-real-ip');
+  const cfConnectingIP = request.headers.get('cf-connecting-ip'); // Cloudflare
+  
+  if (forwarded) {
+    // x-forwarded-for can contain multiple IPs, take the first one
+    return forwarded.split(',')[0].trim();
+  }
+  
+  if (realIP) {
+    return realIP;
+  }
+  
+  if (cfConnectingIP) {
+    return cfConnectingIP;
+  }
+  
+  // Fallback if no IP headers are available
+  return 'unknown';
+}
+
 // POST - Save counter data
 export async function POST(request: NextRequest) {
   try {
@@ -47,11 +72,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get client IP address
+    const ipAddress = getClientIP(request);
+
     const db = await getDatabase();
     const counterData: CounterData = {
       doorId,
       count,
       timestamp: new Date(),
+      ipAddress,
     };
 
     const result = await db.collection('counters').insertOne(counterData);

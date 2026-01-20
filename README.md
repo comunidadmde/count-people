@@ -51,8 +51,11 @@ The application stores counter data in a `counters` collection with the followin
   doorId: string;
   count: number;
   timestamp: Date;
+  ipAddress?: string; // IP address of the person who made the click
 }
 ```
+
+**Note**: The IP address is automatically captured from request headers (x-forwarded-for, x-real-ip, cf-connecting-ip) to handle proxies, load balancers, and CDNs properly.
 
 ## Pages & Routes
 

@@ -9,6 +9,7 @@ interface CounterData {
   doorId: string;
   count: number;
   timestamp: string;
+  ipAddress?: string;
 }
 
 interface DoorSummary {
@@ -224,6 +225,9 @@ export default function AdminDashboardClient() {
                         Count
                       </th>
                       <th className="py-3 px-4 font-semibold text-gray-700">
+                        IP Address
+                      </th>
+                      <th className="py-3 px-4 font-semibold text-gray-700">
                         Timestamp
                       </th>
                     </tr>
@@ -232,7 +236,7 @@ export default function AdminDashboardClient() {
                     {allCounters.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={3}
+                          colSpan={4}
                           className="py-8 text-center text-gray-500"
                         >
                           No counter records found
@@ -255,6 +259,9 @@ export default function AdminDashboardClient() {
                             </td>
                             <td className="py-3 px-4 font-semibold">
                               {counter.count}
+                            </td>
+                            <td className="py-3 px-4 text-gray-600 font-mono text-sm">
+                              {counter.ipAddress || 'N/A'}
                             </td>
                             <td className="py-3 px-4 text-gray-600">
                               {new Date(counter.timestamp).toLocaleString()}
