@@ -1,4 +1,5 @@
-import DoorCounter from './components/DoorCounter';
+import DoorCounterDisplay from './components/DoorCounterDisplay';
+import Link from 'next/link';
 
 export default function Home() {
   const doors = [
@@ -20,28 +21,21 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center gap-4 mb-8">
-          <a
+          <Link
             href="/admin"
             className="px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg transition-colors"
           >
             Admin Login
-          </a>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {doors.map((door) => (
-            <div key={door.id} className="flex flex-col">
-              <DoorCounter
-                doorId={door.id}
-                doorName={door.name}
-              />
-              <a
-                href={`/door/${door.id}`}
-                className="mt-4 text-center text-blue-600 hover:text-blue-800 font-medium"
-              >
-                View Full Page →
-              </a>
-            </div>
+            <DoorCounterDisplay
+              key={door.id}
+              doorId={door.id}
+              doorName={door.name}
+            />
           ))}
         </div>
 
@@ -50,7 +44,8 @@ export default function Home() {
             Instructions
           </h2>
           <ul className="list-disc list-inside space-y-2 text-gray-600">
-            <li>Click the &quot;Count Person&quot; button to increment the counter</li>
+            <li>Click on a door card to go to its counter page</li>
+            <li>On the counter page, click the &quot;Count Person&quot; button to increment</li>
             <li>The count is automatically saved to the database each time you click</li>
             <li>Each door maintains its own independent counter</li>
             <li>Contact an administrator to reset counters or view detailed statistics</li>

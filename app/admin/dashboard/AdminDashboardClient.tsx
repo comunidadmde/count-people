@@ -31,7 +31,7 @@ export default function AdminDashboardClient() {
     'door-3': 'Back Door',
   };
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isInitialLoad = false) => {
     try {
       const response = await fetch('/api/counters');
       const result = await response.json();
@@ -64,12 +64,24 @@ export default function AdminDashboardClient() {
     } catch (error) {
       console.error('Error fetching counters:', error);
     } finally {
-      setIsLoading(false);
+      // Only set loading to false on initial load
+      if (isInitialLoad) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
+    // Initial load
+    fetchData(true);
+    
+    // Set up interval to refresh data every minute
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 60000); // 60000ms = 1 minute
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, [fetchData]);
 
   const handleReset = async (doorId?: string) => {
@@ -97,7 +109,7 @@ export default function AdminDashboardClient() {
 
       if (result.success) {
         alert(result.message);
-        fetchData();
+        fetchData(false);
       } else {
         alert('Failed to reset: ' + result.error);
       }
