@@ -16,6 +16,18 @@ export default function DoorCounter({
   const [count, setCount] = useState(initialCount);
   const [isLoading, setIsLoading] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [userName, setUserName] = useState<string>('');
+  const [showNameInput, setShowNameInput] = useState(false);
+
+  // Load user name from localStorage on mount
+  useEffect(() => {
+    const savedName = localStorage.getItem('counter-user-name');
+    if (savedName) {
+      setUserName(savedName);
+    } else {
+      setShowNameInput(true);
+    }
+  }, []);
 
   // Fetch latest count on mount
   useEffect(() => {
@@ -33,7 +45,29 @@ export default function DoorCounter({
     fetchLatestCount();
   }, [doorId]);
 
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const nameInput = (e.target as HTMLFormElement).elements.namedItem('name') as HTMLInputElement;
+    const name = nameInput.value.trim();
+    if (name) {
+      setUserName(name);
+      localStorage.setItem('counter-user-name', name);
+      setShowNameInput(false);
+    }
+  };
+
+  const handleNameChange = () => {
+    setShowNameInput(true);
+  };
+
   const incrementAndSave = async () => {
+    // Check if name is set
+    if (!userName || userName.trim() === '') {
+      setShowNameInput(true);
+      alert('Please enter your name first');
+      return;
+    }
+
     const newCount = count + 1;
     setCount(newCount);
     setIsLoading(true);
@@ -47,6 +81,7 @@ export default function DoorCounter({
         body: JSON.stringify({
           doorId,
           count: newCount,
+          userName: userName.trim(),
         }),
       });
 
@@ -71,6 +106,47 @@ export default function DoorCounter({
   return (
     <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-gray-200">
       <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">{doorName}</h2>
+      
+      {/* Name Input Section */}
+      {showNameInput ? (
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <form onSubmit={handleNameSubmit} className="space-y-3">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              Enter your name:
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="name"
+                name="name"
+                type="text"
+                defaultValue={userName}
+                placeholder="Your name"
+                required
+                className="flex-1 px-4 py-2 bg-white border-2 border-gray-400 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                autoFocus
+              />
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className="mb-4 text-center">
+          <p className="text-sm text-gray-600">
+            Counting as: <span className="font-semibold text-blue-600">{userName}</span>
+            <button
+              onClick={handleNameChange}
+              className="ml-2 text-blue-500 hover:text-blue-700 text-xs underline"
+            >
+              Change
+            </button>
+          </p>
+        </div>
+      )}
       
       <div className="text-center mb-10">
         <div className="text-8xl font-bold text-blue-600 mb-3">{count}</div>

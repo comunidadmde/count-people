@@ -1,8 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AgGridReact } from 'ag-grid-react';
+import { ColDef, ValueGetterParams, ICellRendererParams } from 'ag-grid-community';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 interface CounterData {
   _id: string;
@@ -10,6 +14,7 @@ interface CounterData {
   count: number;
   timestamp: string;
   ipAddress?: string;
+  userName?: string;
 }
 
 interface DoorSummary {
@@ -31,6 +36,69 @@ export default function AdminDashboardClient() {
     'door-2': 'Side Door',
     'door-3': 'Back Door',
   };
+
+  // AG Grid column definitions
+  const columnDefs: ColDef[] = useMemo(
+    () => [
+      {
+        field: 'doorId',
+        headerName: 'Door',
+        width: 150,
+        valueGetter: (params: ValueGetterParams) => doorNames[params.data.doorId] || params.data.doorId,
+        sortable: true,
+        filter: true,
+      },
+      {
+        field: 'count',
+        headerName: 'Count',
+        width: 100,
+        sortable: true,
+        filter: true,
+        cellStyle: () => ({ fontWeight: 'bold' }),
+      },
+      {
+        field: 'userName',
+        headerName: 'Name',
+        width: 150,
+        sortable: true,
+        filter: true,
+        valueGetter: (params: ValueGetterParams) => params.data.userName || 'Anonymous',
+      },
+      {
+        field: 'ipAddress',
+        headerName: 'IP Address',
+        width: 150,
+        sortable: true,
+        filter: true,
+        valueGetter: (params: ValueGetterParams) => params.data.ipAddress || 'N/A',
+        cellStyle: () => ({ fontFamily: 'monospace', fontSize: '0.875rem' }),
+      },
+      {
+        field: 'timestamp',
+        headerName: 'Timestamp',
+        width: 200,
+        sortable: true,
+        filter: true,
+        valueGetter: (params: ValueGetterParams) => new Date(params.data.timestamp).toLocaleString(),
+        comparator: (valueA: any, valueB: any, nodeA: any, nodeB: any) => {
+          const dateA = new Date(nodeA.data.timestamp).getTime();
+          const dateB = new Date(nodeB.data.timestamp).getTime();
+          return dateA - dateB;
+        },
+      },
+    ],
+    []
+  );
+
+  // Default column properties
+  const defaultColDef = useMemo(
+    () => ({
+      resizable: true,
+      sortable: true,
+      filter: true,
+    }),
+    []
+  );
 
   const fetchData = useCallback(async (isInitialLoad = false) => {
     try {
@@ -214,63 +282,22 @@ export default function AdminDashboardClient() {
               <h2 className="text-2xl font-bold text-gray-800 mb-4">
                 All Counter Records
               </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="py-3 px-4 font-semibold text-gray-700">
-                        Door
-                      </th>
-                      <th className="py-3 px-4 font-semibold text-gray-700">
-                        Count
-                      </th>
-                      <th className="py-3 px-4 font-semibold text-gray-700">
-                        IP Address
-                      </th>
-                      <th className="py-3 px-4 font-semibold text-gray-700">
-                        Timestamp
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allCounters.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="py-8 text-center text-gray-500"
-                        >
-                          No counter records found
-                        </td>
-                      </tr>
-                    ) : (
-                      allCounters
-                        .sort(
-                          (a, b) =>
-                            new Date(b.timestamp).getTime() -
-                            new Date(a.timestamp).getTime()
-                        )
-                        .map((counter) => (
-                          <tr
-                            key={counter._id}
-                            className="border-b border-gray-100 hover:bg-gray-50"
-                          >
-                            <td className="py-3 px-4">
-                              {doorNames[counter.doorId] || counter.doorId}
-                            </td>
-                            <td className="py-3 px-4 font-semibold">
-                              {counter.count}
-                            </td>
-                            <td className="py-3 px-4 text-gray-600 font-mono text-sm">
-                              {counter.ipAddress || 'N/A'}
-                            </td>
-                            <td className="py-3 px-4 text-gray-600">
-                              {new Date(counter.timestamp).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))
-                    )}
-                  </tbody>
-                </table>
+              <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
+                <AgGridReact
+                  rowData={allCounters.sort(
+                    (a, b) =>
+                      new Date(b.timestamp).getTime() -
+                      new Date(a.timestamp).getTime()
+                  )}
+                  columnDefs={columnDefs}
+                  defaultColDef={defaultColDef}
+                  pagination={true}
+                  paginationPageSize={20}
+                  animateRows={true}
+                  rowSelection="single"
+                  suppressRowClickSelection={false}
+                  domLayout="normal"
+                />
               </div>
             </div>
           </>

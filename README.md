@@ -52,10 +52,14 @@ The application stores counter data in a `counters` collection with the followin
   count: number;
   timestamp: Date;
   ipAddress?: string; // IP address of the person who made the click
+  userName?: string; // Name of the person who made the click
 }
 ```
 
-**Note**: The IP address is automatically captured from request headers (x-forwarded-for, x-real-ip, cf-connecting-ip) to handle proxies, load balancers, and CDNs properly.
+**Notes**:
+- The IP address is automatically captured from request headers (x-forwarded-for, x-real-ip, cf-connecting-ip) to handle proxies, load balancers, and CDNs properly.
+- Users are prompted to enter their name on first use. The name is stored in localStorage and can be changed at any time.
+- If no name is provided, it defaults to "Anonymous".
 
 ## Pages & Routes
 

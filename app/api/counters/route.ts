@@ -6,6 +6,7 @@ export interface CounterData {
   count: number;
   timestamp: Date;
   ipAddress?: string;
+  userName?: string;
 }
 
 // GET - Retrieve all counters
@@ -41,10 +42,22 @@ function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   const realIP = request.headers.get('x-real-ip');
   const cfConnectingIP = request.headers.get('cf-connecting-ip'); // Cloudflare
+  const remoteAddr = request.headers.get('x-remote-addr');
+  
+  // Log headers for debugging (remove in production if needed)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('IP Headers:', {
+      'x-forwarded-for': forwarded,
+      'x-real-ip': realIP,
+      'cf-connecting-ip': cfConnectingIP,
+      'x-remote-addr': remoteAddr,
+    });
+  }
   
   if (forwarded) {
     // x-forwarded-for can contain multiple IPs, take the first one
-    return forwarded.split(',')[0].trim();
+    const ip = forwarded.split(',')[0].trim();
+    if (ip) return ip;
   }
   
   if (realIP) {
@@ -55,6 +68,16 @@ function getClientIP(request: NextRequest): string {
     return cfConnectingIP;
   }
   
+  if (remoteAddr) {
+    return remoteAddr;
+  }
+  
+  // Try to get from request URL (for development/localhost)
+  const url = new URL(request.url);
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    return '127.0.0.1';
+  }
+  
   // Fallback if no IP headers are available
   return 'unknown';
 }
@@ -63,7 +86,7 @@ function getClientIP(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { doorId, count } = body;
+    const { doorId, count, userName } = body;
 
     if (!doorId || typeof count !== 'number') {
       return NextResponse.json(
@@ -74,6 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Get client IP address
     const ipAddress = getClientIP(request);
+    console.log('Saving counter with IP:', ipAddress);
 
     const db = await getDatabase();
     const counterData: CounterData = {
@@ -81,6 +105,7 @@ export async function POST(request: NextRequest) {
       count,
       timestamp: new Date(),
       ipAddress,
+      userName: userName || 'Anonymous',
     };
 
     const result = await db.collection('counters').insertOne(counterData);
