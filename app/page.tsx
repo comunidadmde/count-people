@@ -2,6 +2,9 @@ import DoorCounterDisplay from './components/DoorCounterDisplay';
 import Link from 'next/link';
 import { getDatabase } from '@/lib/mongodb';
 
+// Force dynamic rendering to always show fresh door data
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // Fetch doors from database
   let doors: { id: string; name: string }[] = [];
