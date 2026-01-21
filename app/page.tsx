@@ -25,7 +25,7 @@ export default async function Home() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
-            Comunidad's Door Counter System
+            Comunidad&apos;s Door Counter System
           </h1>
           <p className="text-xl text-gray-600">
             Track people count for multiple doors and auditoriums
