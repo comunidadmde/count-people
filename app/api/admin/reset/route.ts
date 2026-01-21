@@ -27,10 +27,8 @@ export async function POST(request: NextRequest) {
         message: `Counter for door ${doorId} has been reset (${result.deletedCount} records deleted)`,
       });
     } else {
-      // Reset all doors by deleting all records
-      const result = await db.collection('counters').deleteMany({
-        doorId: { $in: ['door-1', 'door-2', 'door-3'] },
-      });
+      // Reset all doors by deleting all records (empty filter deletes all documents)
+      const result = await db.collection('counters').deleteMany({});
 
       return NextResponse.json({
         success: true,
