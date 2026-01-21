@@ -25,19 +25,19 @@ export default async function Home() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
-            Door Counter System
+            Comunidad's Door Counter System
           </h1>
           <p className="text-xl text-gray-600">
-            Track people count for multiple doors
+            Track people count for multiple doors and auditoriums
           </p>
         </div>
 
         <div className="flex justify-center gap-4 mb-8">
           <Link
-            href="/admin"
+            href="/admin/dashboard"
             className="px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg transition-colors"
           >
-            Admin Login
+            Admin
           </Link>
         </div>
 

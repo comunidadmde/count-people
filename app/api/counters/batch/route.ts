@@ -44,14 +44,27 @@ export async function POST(request: NextRequest) {
 
     const db = await getDatabase();
     
-    // Prepare batch data
-    const batchData: CounterData[] = clicks.map((click) => ({
-      doorId: click.doorId,
-      auditorium: click.auditorium || undefined,
-      timestamp: new Date(click.timestamp || Date.now()),
-      ipAddress: click.ipAddress || ipAddress,
-      userName: click.userName || 'Anonymous',
-    }));
+    // Get all doors to map doorId to auditorium
+    const doors = await db.collection('doors').find({}).toArray();
+    const doorToAuditorium: Record<string, string> = {};
+    doors.forEach((door: any) => {
+      doorToAuditorium[door.doorId] = door.auditorium;
+    });
+
+    // Prepare batch data - use auditorium from door configuration
+    const batchData: CounterData[] = clicks.map((click) => {
+      const auditorium = doorToAuditorium[click.doorId];
+      if (!auditorium) {
+        throw new Error(`Door ${click.doorId} not found or auditorium not assigned`);
+      }
+      return {
+        doorId: click.doorId,
+        auditorium: auditorium,
+        timestamp: new Date(click.timestamp || Date.now()),
+        ipAddress: click.ipAddress || ipAddress,
+        userName: click.userName || 'Anonymous',
+      };
+    });
 
     // Insert all clicks in batch (ordered: false allows partial success)
     const result = await db.collection('counters').insertMany(batchData, {

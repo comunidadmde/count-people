@@ -20,15 +20,15 @@ interface CounterData {
 interface DoorSummary {
   doorId: string;
   doorName: string;
+  auditorium: string;
   count: number;
-  auditoriumCounts: Record<string, number>;
   lastUpdated: string | null;
 }
 
 interface DoorInfo {
   doorId: string;
   doorName: string;
-  auditoriums: string[];
+  auditorium: string;
 }
 
 export default function AdminDashboardClient() {
@@ -36,6 +36,7 @@ export default function AdminDashboardClient() {
   const [doors, setDoors] = useState<DoorSummary[]>([]);
   const [allCounters, setAllCounters] = useState<CounterData[]>([]);
   const [doorInfos, setDoorInfos] = useState<Record<string, DoorInfo>>({});
+  const [auditoriumTotals, setAuditoriumTotals] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -63,7 +64,10 @@ export default function AdminDashboardClient() {
         sortable: true,
         filter: 'agTextColumnFilter',
         floatingFilter: true,
-        valueGetter: (params: ValueGetterParams) => params.data?.auditorium || 'Unassigned',
+        valueGetter: (params: ValueGetterParams) => {
+          const doorId = params.data?.doorId;
+          return doorInfos[doorId]?.auditorium || params.data?.auditorium || 'Unassigned';
+        },
       },
       {
         field: 'userName',
@@ -147,14 +151,13 @@ export default function AdminDashboardClient() {
 
       if (result.success) {
         setAllCounters(result.data);
+        setAuditoriumTotals(result.auditoriumTotals || {});
 
         // Use the latest doorInfos state or the one we just set
         // We need to use a functional update or get the latest value
         setDoors((prevDoors) => {
           // Get door IDs from the doors we just fetched, or use defaults
-          const doorIds = Object.keys(doorsMap).length > 0 
-            ? Object.keys(doorsMap)
-            : ['door-1', 'door-2', 'door-3'];
+          const doorIds = Object.keys(doorsMap)
           
           return doorIds.map((doorId) => {
             // Filter counters for this door
@@ -171,14 +174,11 @@ export default function AdminDashboardClient() {
             // Get count from backend aggregation
             const count = result.doorCounts?.[doorId] || 0;
             
-            // Get auditorium counts
-            const audCounts = result.auditoriumCounts?.[doorId] || {};
-            
             return {
               doorId,
               doorName: doorsMap[doorId]?.doorName || doorId,
+              auditorium: doorsMap[doorId]?.auditorium || 'Unassigned',
               count,
-              auditoriumCounts: audCounts,
               lastUpdated: latestCounter?.timestamp || null,
             };
           });
@@ -294,6 +294,28 @@ export default function AdminDashboardClient() {
           </div>
         ) : (
           <>
+            {/* Auditorium Totals */}
+            {Object.keys(auditoriumTotals).length > 0 && (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Totals by Auditorium
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {Object.entries(auditoriumTotals)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([auditorium, count]) => (
+                      <div
+                        key={auditorium}
+                        className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200"
+                      >
+                        <div className="text-sm text-gray-600 mb-1">{auditorium}</div>
+                        <div className="text-4xl font-bold text-blue-600">{count}</div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
             {/* Door Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {doors.map((door) => (
@@ -301,42 +323,20 @@ export default function AdminDashboardClient() {
                   key={door.doorId}
                   className="bg-white rounded-lg shadow-lg p-6 border-2 border-gray-200"
                 >
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">
+                  <h2 className="text-xl font-bold text-gray-800 mb-2">
                     {door.doorName}
                   </h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Auditorium: <span className="font-semibold">{door.auditorium}</span>
+                  </p>
                   
                   <div className="mb-4">
                     <div className="flex items-baseline gap-2 mb-3">
-                      <span className="text-sm text-gray-600">Total Count:</span>
+                      <span className="text-sm text-gray-600">Count:</span>
                       <span className="text-4xl font-bold text-blue-600">
                         {door.count}
                       </span>
                     </div>
-                    
-                    {/* Auditorium Breakdown */}
-                    {doorInfos[door.doorId]?.auditoriums && doorInfos[door.doorId].auditoriums.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-xs font-semibold text-gray-700 mb-2">By Auditorium:</p>
-                        <div className="space-y-1">
-                          {doorInfos[door.doorId].auditoriums.map((aud) => (
-                            <div key={aud} className="flex justify-between items-center text-sm">
-                              <span className="text-gray-600">{aud}:</span>
-                              <span className="font-semibold text-gray-800">
-                                {door.auditoriumCounts[aud] || 0}
-                              </span>
-                            </div>
-                          ))}
-                          {door.auditoriumCounts['Unassigned'] > 0 && (
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-gray-500">Unassigned:</span>
-                              <span className="font-semibold text-gray-600">
-                                {door.auditoriumCounts['Unassigned']}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                   
                   <p className="text-xs text-gray-500 mb-4">

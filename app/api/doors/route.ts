@@ -4,7 +4,7 @@ import { getDatabase } from '@/lib/mongodb';
 export interface DoorData {
   doorId: string;
   doorName: string;
-  auditoriums: string[];
+  auditorium: string;
 }
 
 // GET - Get all doors with their auditoriums
@@ -26,15 +26,15 @@ export async function GET() {
   }
 }
 
-// POST - Create or update a door with auditoriums
+// POST - Create or update a door with an auditorium
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { doorId, doorName, auditoriums } = body;
+    const { doorId, doorName, auditorium } = body;
 
-    if (!doorId || !doorName || !Array.isArray(auditoriums)) {
+    if (!doorId || !doorName || !auditorium || auditorium.trim() === '') {
       return NextResponse.json(
-        { success: false, error: 'Invalid data. doorId, doorName, and auditoriums array are required.' },
+        { success: false, error: 'Invalid data. doorId, doorName, and auditorium are required.' },
         { status: 400 }
       );
     }
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const doorData: DoorData = {
       doorId,
       doorName,
-      auditoriums: auditoriums.filter((a: string) => a.trim() !== ''),
+      auditorium: auditorium.trim(),
     };
 
     // Upsert the door

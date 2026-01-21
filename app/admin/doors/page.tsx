@@ -7,7 +7,7 @@ import Link from 'next/link';
 interface DoorInfo {
   doorId: string;
   doorName: string;
-  auditoriums: string[];
+  auditorium: string;
 }
 
 export default function DoorsManagementPage() {
@@ -15,7 +15,7 @@ export default function DoorsManagementPage() {
   const [doors, setDoors] = useState<DoorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingDoor, setEditingDoor] = useState<DoorInfo | null>(null);
-  const [formData, setFormData] = useState({ doorId: '', doorName: '', auditoriums: '' });
+  const [formData, setFormData] = useState({ doorId: '', doorName: '', auditorium: '' });
 
   useEffect(() => {
     fetchDoors();
@@ -38,10 +38,10 @@ export default function DoorsManagementPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const auditoriumsArray = formData.auditoriums
-        .split(',')
-        .map((a) => a.trim())
-        .filter((a) => a !== '');
+      if (!formData.auditorium.trim()) {
+        alert('Auditorium is required');
+        return;
+      }
 
       const response = await fetch('/api/doors', {
         method: 'POST',
@@ -49,14 +49,14 @@ export default function DoorsManagementPage() {
         body: JSON.stringify({
           doorId: formData.doorId,
           doorName: formData.doorName,
-          auditoriums: auditoriumsArray,
+          auditorium: formData.auditorium.trim(),
         }),
       });
 
       const result = await response.json();
       if (result.success) {
         alert('Door saved successfully!');
-        setFormData({ doorId: '', doorName: '', auditoriums: '' });
+        setFormData({ doorId: '', doorName: '', auditorium: '' });
         setEditingDoor(null);
         fetchDoors();
       } else {
@@ -73,13 +73,13 @@ export default function DoorsManagementPage() {
     setFormData({
       doorId: door.doorId,
       doorName: door.doorName,
-      auditoriums: door.auditoriums.join(', '),
+      auditorium: door.auditorium,
     });
   };
 
   const handleCancel = () => {
     setEditingDoor(null);
-    setFormData({ doorId: '', doorName: '', auditoriums: '' });
+    setFormData({ doorId: '', doorName: '', auditorium: '' });
   };
 
   if (isLoading) {
@@ -145,20 +145,20 @@ export default function DoorsManagementPage() {
               />
             </div>
             <div>
-              <label htmlFor="auditoriums" className="block text-sm font-medium text-gray-700 mb-1">
-                Auditoriums (comma-separated)
+              <label htmlFor="auditorium" className="block text-sm font-medium text-gray-700 mb-1">
+                Auditorium
               </label>
               <input
-                id="auditoriums"
+                id="auditorium"
                 type="text"
-                value={formData.auditoriums}
-                onChange={(e) => setFormData({ ...formData, auditoriums: e.target.value })}
+                value={formData.auditorium}
+                onChange={(e) => setFormData({ ...formData, auditorium: e.target.value })}
                 required
                 className="w-full px-4 py-2 border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Auditorium A, Auditorium B, Auditorium C"
+                placeholder="Auditorium A"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Separate multiple auditoriums with commas
+                Each door belongs to one auditorium
               </p>
             </div>
             <div className="flex gap-2">
@@ -206,20 +206,13 @@ export default function DoorsManagementPage() {
                     </button>
                   </div>
                   <div className="mt-3">
-                    <p className="text-sm font-semibold text-gray-700 mb-1">Auditoriums:</p>
-                    {door.auditoriums.length === 0 ? (
-                      <p className="text-sm text-gray-500">No auditoriums configured</p>
+                    <p className="text-sm font-semibold text-gray-700 mb-1">Auditorium:</p>
+                    {door.auditorium ? (
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium inline-block">
+                        {door.auditorium}
+                      </span>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {door.auditoriums.map((aud) => (
-                          <span
-                            key={aud}
-                            className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-                          >
-                            {aud}
-                          </span>
-                        ))}
-                      </div>
+                      <p className="text-sm text-gray-500">No auditorium configured</p>
                     )}
                   </div>
                 </div>

@@ -31,9 +31,6 @@ export default function DoorCounter({
   const [showNameInput, setShowNameInput] = useState(false);
   const [pendingClicks, setPendingClicks] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [selectedAuditorium, setSelectedAuditorium] = useState<string>('');
-  const [auditoriumCounts, setAuditoriumCounts] = useState<Record<string, number>>({});
-  const [doorInfo, setDoorInfo] = useState<{ doorName: string; auditoriums: string[] } | null>(null);
   const clickQueueRef = useRef<QueuedClick[]>([]);
   const isProcessingRef = useRef(false);
 
@@ -128,11 +125,6 @@ export default function DoorCounter({
               sentIds.add(click.id);
               totalSent += 1;
             });
-            
-            // Update auditorium counts from batch response if available
-            if (result.auditoriumCounts && result.auditoriumCounts[doorId]) {
-              setAuditoriumCounts(result.auditoriumCounts[doorId]);
-            }
           } else if (result.insertedCount > 0) {
             // Partial success - some clicks were inserted
             // Since we can't track which specific ones, we'll assume all succeeded
@@ -142,11 +134,6 @@ export default function DoorCounter({
               totalSent += 1;
             });
             console.warn(`Partial batch success: ${result.insertedCount}/${batch.length} inserted`);
-            
-            // Update auditorium counts from batch response if available
-            if (result.auditoriumCounts && result.auditoriumCounts[doorId]) {
-              setAuditoriumCounts(result.auditoriumCounts[doorId]);
-            }
           } else {
             // Complete failure - increment retry count
             batch.forEach((click) => {
@@ -172,13 +159,12 @@ export default function DoorCounter({
         setPendingClicks(clickQueueRef.current.length);
         saveQueueToStorage();
 
-        // Fetch updated count and auditorium counts from server
+        // Fetch updated count from server
         try {
           const countResponse = await fetch(`/api/counters/${doorId}`);
           const countResult = await countResponse.json();
           if (countResult.success && countResult.data) {
             setCount(countResult.data.count || 0);
-            setAuditoriumCounts(countResult.data.auditoriumCounts || {});
           }
         } catch (error) {
           console.error('Error fetching updated count:', error);
@@ -254,30 +240,14 @@ export default function DoorCounter({
     }
   }, [doorId, processQueue]);
 
-  // Fetch door info and count on mount
+  // Fetch count on mount
   useEffect(() => {
-    async function fetchDoorData() {
+    async function fetchCount() {
       try {
-        // Fetch door info
-        const doorResponse = await fetch('/api/doors');
-        const doorResult = await doorResponse.json();
-        if (doorResult.success) {
-          const door = doorResult.data.find((d: any) => d.doorId === doorId);
-          if (door) {
-            setDoorInfo({ doorName: door.doorName, auditoriums: door.auditoriums || [] });
-            // Set first auditorium as default if available
-            if (door.auditoriums && door.auditoriums.length > 0) {
-              setSelectedAuditorium(door.auditoriums[0]);
-            }
-          }
-        }
-
-        // Fetch count and auditorium counts
         const countResponse = await fetch(`/api/counters/${doorId}`);
         const countResult = await countResponse.json();
         if (countResult.success && countResult.data) {
           const serverCount = countResult.data.count || 0;
-          setAuditoriumCounts(countResult.data.auditoriumCounts || {});
           
           // Only update if we don't have pending clicks
           if (clickQueueRef.current.length === 0) {
@@ -287,11 +257,11 @@ export default function DoorCounter({
           }
         }
       } catch (error) {
-        console.error('Error fetching door data:', error);
+        console.error('Error fetching count:', error);
       }
     }
     // Delay fetch to allow queue to load first
-    setTimeout(() => fetchDoorData(), 100);
+    setTimeout(() => fetchCount(), 100);
   }, [doorId]);
 
   const handleNameSubmit = (e: React.FormEvent) => {
@@ -314,7 +284,6 @@ export default function DoorCounter({
     const click: QueuedClick = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       doorId,
-      auditorium: selectedAuditorium || undefined,
       userName: userName.trim(),
       timestamp: Date.now(),
       retryCount: 0,
@@ -342,7 +311,7 @@ export default function DoorCounter({
         processQueue();
       }, 100);
     }
-  }, [doorId, userName, selectedAuditorium, processQueue]);
+  }, [doorId, userName, processQueue]);
 
   const incrementAndSave = () => {
     // Check if name is set
@@ -443,27 +412,6 @@ export default function DoorCounter({
         </div>
       )}
       
-      {/* Auditorium Selector */}
-      {doorInfo && doorInfo.auditoriums.length > 0 && (
-        <div className="mb-6">
-          <label htmlFor="auditorium" className="block text-sm font-medium text-gray-700 mb-2">
-            Select Auditorium:
-          </label>
-          <select
-            id="auditorium"
-            value={selectedAuditorium}
-            onChange={(e) => setSelectedAuditorium(e.target.value)}
-            className="w-full px-4 py-2 bg-white border-2 border-gray-400 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
-          >
-            {doorInfo.auditoriums.map((aud) => (
-              <option key={aud} value={aud}>
-                {aud}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
       <div className="text-center mb-10">
         <div className="text-8xl font-bold text-blue-600 mb-3">
           {count + pendingClicks}
@@ -475,36 +423,6 @@ export default function DoorCounter({
           </p>
         )}
       </div>
-
-      {/* Auditorium Breakdown */}
-      {doorInfo && doorInfo.auditoriums.length > 0 && Object.keys(auditoriumCounts).length > 0 && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">
-            Count by Auditorium
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            {doorInfo.auditoriums.map((aud) => (
-              <div
-                key={aud}
-                className="bg-white rounded-lg p-3 border border-gray-300"
-              >
-                <div className="text-sm text-gray-600 mb-1">{aud}</div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {auditoriumCounts[aud] || 0}
-                </div>
-              </div>
-            ))}
-            {auditoriumCounts['Unassigned'] > 0 && (
-              <div className="bg-white rounded-lg p-3 border border-gray-300">
-                <div className="text-sm text-gray-600 mb-1">Unassigned</div>
-                <div className="text-2xl font-bold text-gray-600">
-                  {auditoriumCounts['Unassigned']}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <button
         onClick={incrementAndSave}

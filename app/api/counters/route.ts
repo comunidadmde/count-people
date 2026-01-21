@@ -34,16 +34,34 @@ export async function GET() {
       ])
       .toArray();
 
-    // Get aggregated counts per door and auditorium
-    const auditoriumCounts = await db
+    // Get all doors to map doorId to auditorium
+    const doors = await db.collection('doors').find({}).toArray();
+    const doorToAuditorium: Record<string, string> = {};
+    doors.forEach((door: any) => {
+      doorToAuditorium[door.doorId] = door.auditorium;
+    });
+
+    // Get aggregated counts per auditorium (sum across all doors)
+    const auditoriumTotals = await db
       .collection('counters')
       .aggregate([
         {
+          $lookup: {
+            from: 'doors',
+            localField: 'doorId',
+            foreignField: 'doorId',
+            as: 'doorInfo',
+          },
+        },
+        {
+          $unwind: {
+            path: '$doorInfo',
+            preserveNullAndEmptyArrays: false, // Only count doors that have an auditorium assigned
+          },
+        },
+        {
           $group: {
-            _id: {
-              doorId: '$doorId',
-              auditorium: '$auditorium',
-            },
+            _id: '$doorInfo.auditorium',
             count: { $sum: 1 },
           },
         },
@@ -56,21 +74,17 @@ export async function GET() {
       countsMap[item._id] = item.count;
     });
 
-    const auditoriumCountsMap: Record<string, Record<string, number>> = {};
-    auditoriumCounts.forEach((item) => {
-      const doorId = item._id.doorId;
-      const auditorium = item._id.auditorium || 'Unassigned';
-      if (!auditoriumCountsMap[doorId]) {
-        auditoriumCountsMap[doorId] = {};
-      }
-      auditoriumCountsMap[doorId][auditorium] = item.count;
+    // Create auditorium totals map
+    const auditoriumTotalsMap: Record<string, number> = {};
+    auditoriumTotals.forEach((item) => {
+      auditoriumTotalsMap[item._id] = item.count;
     });
 
     return NextResponse.json({
       success: true,
       data: counters,
       doorCounts: countsMap,
-      auditoriumCounts: auditoriumCountsMap,
+      auditoriumTotals: auditoriumTotalsMap,
     });
   } catch (error) {
     console.error('Error fetching counters:', error);
@@ -152,9 +166,19 @@ export async function POST(request: NextRequest) {
     console.log('Saving counter click with IP:', ipAddress);
 
     const db = await getDatabase();
+    
+    // Get door info to get auditorium
+    const door = await db.collection('doors').findOne({ doorId });
+    if (!door || !door.auditorium) {
+      return NextResponse.json(
+        { success: false, error: 'Door not found or auditorium not assigned. Please configure the door first.' },
+        { status: 400 }
+      );
+    }
+
     const counterData: CounterData = {
       doorId,
-      auditorium: auditorium || undefined,
+      auditorium: door.auditorium, // Use auditorium from door configuration
       timestamp: new Date(),
       ipAddress,
       userName: userName || 'Anonymous',
@@ -165,33 +189,10 @@ export async function POST(request: NextRequest) {
     // Get the new count for this door
     const doorCount = await db.collection('counters').countDocuments({ doorId });
 
-    // Get auditorium counts
-    const auditoriumCounts = await db
-      .collection('counters')
-      .aggregate([
-        {
-          $match: { doorId },
-        },
-        {
-          $group: {
-            _id: '$auditorium',
-            count: { $sum: 1 },
-          },
-        },
-      ])
-      .toArray();
-
-    const auditoriumMap: Record<string, number> = {};
-    auditoriumCounts.forEach((item) => {
-      const aud = item._id || 'Unassigned';
-      auditoriumMap[aud] = item.count;
-    });
-
     return NextResponse.json({
       success: true,
       data: { ...counterData, _id: result.insertedId },
       count: doorCount,
-      auditoriumCounts: auditoriumMap,
     });
   } catch (error) {
     console.error('Error saving counter:', error);
