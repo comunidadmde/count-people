@@ -39,6 +39,8 @@ export default function DoorCounter({
   const passwordHashRef = useRef<string>(''); // Store password hash for quick verification
   const clickQueueRef = useRef<QueuedClick[]>([]);
   const isProcessingRef = useRef(false);
+  const [auditoriumTotal, setAuditoriumTotal] = useState<number | null>(null);
+  const [auditoriumName, setAuditoriumName] = useState<string | null>(null);
 
   // Save queue to localStorage with error handling
   const saveQueueToStorage = useCallback(() => {
@@ -220,12 +222,19 @@ export default function DoorCounter({
         setPendingClicks(clickQueueRef.current.length);
         saveQueueToStorage();
 
-        // Fetch updated count from server
+        // Fetch updated count and auditorium total from server
         try {
           const countResponse = await fetch(`/api/counters/${doorId}`);
           const countResult = await countResponse.json();
           if (countResult.success && countResult.data) {
             setCount(countResult.data.count || 0);
+            // Update auditorium total
+            if (countResult.data.auditoriumTotal !== null && countResult.data.auditoriumTotal !== undefined) {
+              setAuditoriumTotal(countResult.data.auditoriumTotal);
+            }
+            if (countResult.data.auditorium) {
+              setAuditoriumName(countResult.data.auditorium);
+            }
           }
         } catch (error) {
           console.error('Error fetching updated count:', error);
@@ -296,6 +305,13 @@ export default function DoorCounter({
             if (result.success && result.data) {
               const serverCount = result.data.count || 0;
               setCount(serverCount + pendingCount);
+              // Update auditorium total
+              if (result.data.auditoriumTotal !== null && result.data.auditoriumTotal !== undefined) {
+                setAuditoriumTotal(result.data.auditoriumTotal);
+              }
+              if (result.data.auditorium) {
+                setAuditoriumName(result.data.auditorium);
+              }
             }
           })
           .catch((error) => {
@@ -338,7 +354,7 @@ export default function DoorCounter({
     }
   }, [doorId]);
 
-  // Fetch count on mount
+  // Fetch count and auditorium total on mount
   useEffect(() => {
     async function fetchCount() {
       try {
@@ -352,6 +368,14 @@ export default function DoorCounter({
             setCount(serverCount);
           } else {
             setCount(serverCount + clickQueueRef.current.length);
+          }
+
+          // Update auditorium total and name
+          if (countResult.data.auditoriumTotal !== null && countResult.data.auditoriumTotal !== undefined) {
+            setAuditoriumTotal(countResult.data.auditoriumTotal);
+          }
+          if (countResult.data.auditorium) {
+            setAuditoriumName(countResult.data.auditorium);
           }
         }
       } catch (error) {
@@ -495,6 +519,24 @@ export default function DoorCounter({
       }
     }, 3000); // Try to sync every 3 seconds
 
+    // Periodic refresh of auditorium total (every 5 seconds)
+    const auditoriumRefreshInterval = setInterval(async () => {
+      try {
+        const countResponse = await fetch(`/api/counters/${doorId}`);
+        const countResult = await countResponse.json();
+        if (countResult.success && countResult.data) {
+          if (countResult.data.auditoriumTotal !== null && countResult.data.auditoriumTotal !== undefined) {
+            setAuditoriumTotal(countResult.data.auditoriumTotal);
+          }
+          if (countResult.data.auditorium) {
+            setAuditoriumName(countResult.data.auditorium);
+          }
+        }
+      } catch (error) {
+        console.error('Error refreshing auditorium total:', error);
+      }
+    }, 5000); // Refresh every 5 seconds
+
     // Sync when page becomes visible (user comes back to tab)
     const handleVisibilityChange = () => {
       if (!document.hidden && clickQueueRef.current.length > 0 && !isProcessingRef.current) {
@@ -518,10 +560,11 @@ export default function DoorCounter({
 
     return () => {
       clearInterval(interval);
+      clearInterval(auditoriumRefreshInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [processQueue]);
+  }, [processQueue, doorId]);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-gray-200">
@@ -631,6 +674,15 @@ export default function DoorCounter({
           </p>
         )}
       </div>
+
+      {/* Auditorium Global Counter - Small at bottom */}
+      {auditoriumTotal !== null && auditoriumName && (
+        <div className="my-4 pt-4 border-t border-gray-200">
+          <p className="text-l text-gray-400 text-center">
+            <span className="font-medium text-gray-500">{auditoriumName}</span> Total: <span className="font-semibold text-gray-600">{auditoriumTotal}</span>
+          </p>
+        </div>
+      )}
 
       <button
         onClick={incrementAndSave}

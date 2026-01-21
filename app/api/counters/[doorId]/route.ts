@@ -24,6 +24,14 @@ export async function GET(
     // Get door info
     const door = await db.collection('doors').findOne({ doorId });
 
+    // Get auditorium total count if door has an auditorium
+    let auditoriumTotal = 0;
+    if (door?.auditorium) {
+      auditoriumTotal = await db.collection('counters').countDocuments({
+        auditorium: door.auditorium,
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -31,6 +39,8 @@ export async function GET(
         count,
         lastUpdated: latestCounter?.timestamp || null,
         door: door || null,
+        auditoriumTotal: door?.auditorium ? auditoriumTotal : null,
+        auditorium: door?.auditorium || null,
       },
     });
   } catch (error) {
