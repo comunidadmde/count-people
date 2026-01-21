@@ -8,6 +8,7 @@ interface DoorInfo {
   doorId: string;
   doorName: string;
   auditorium: string;
+  password?: string; // Password is not returned from API for security
 }
 
 export default function DoorsManagementPage() {
@@ -15,7 +16,7 @@ export default function DoorsManagementPage() {
   const [doors, setDoors] = useState<DoorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingDoor, setEditingDoor] = useState<DoorInfo | null>(null);
-  const [formData, setFormData] = useState({ doorId: '', doorName: '', auditorium: '' });
+  const [formData, setFormData] = useState({ doorId: '', doorName: '', auditorium: '', password: '' });
 
   useEffect(() => {
     fetchDoors();
@@ -43,20 +44,38 @@ export default function DoorsManagementPage() {
         return;
       }
 
+      // Password is required for new doors, optional for editing (to keep current)
+      if (!editingDoor && !formData.password.trim()) {
+        alert('Password is required');
+        return;
+      }
+
+      // If editing and password is empty, don't send it (will keep current password)
+      const requestBody: any = {
+        doorId: formData.doorId,
+        doorName: formData.doorName,
+        auditorium: formData.auditorium.trim(),
+      };
+
+      // Only include password if it's provided (for new doors or when updating)
+      if (formData.password.trim()) {
+        requestBody.password = formData.password.trim();
+      } else if (!editingDoor) {
+        // New door must have password
+        alert('Password is required');
+        return;
+      }
+
       const response = await fetch('/api/doors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          doorId: formData.doorId,
-          doorName: formData.doorName,
-          auditorium: formData.auditorium.trim(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
       if (result.success) {
         alert('Door saved successfully!');
-        setFormData({ doorId: '', doorName: '', auditorium: '' });
+        setFormData({ doorId: '', doorName: '', auditorium: '', password: '' });
         setEditingDoor(null);
         fetchDoors();
       } else {
@@ -74,12 +93,13 @@ export default function DoorsManagementPage() {
       doorId: door.doorId,
       doorName: door.doorName,
       auditorium: door.auditorium,
+      password: '', // Don't pre-fill password for security
     });
   };
 
   const handleCancel = () => {
     setEditingDoor(null);
-    setFormData({ doorId: '', doorName: '', auditorium: '' });
+    setFormData({ doorId: '', doorName: '', auditorium: '', password: '' });
   };
 
   if (isLoading) {
@@ -159,6 +179,23 @@ export default function DoorsManagementPage() {
               />
               <p className="text-xs text-gray-500 mt-1">
                 Each door belongs to one auditorium
+              </p>
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password {editingDoor && <span className="text-gray-500">(leave blank to keep current)</span>}
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required={!editingDoor}
+                className="w-full px-4 py-2 border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter password"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Users will need this password to count on this door
               </p>
             </div>
             <div className="flex gap-2">

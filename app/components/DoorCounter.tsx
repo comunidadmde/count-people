@@ -31,6 +31,10 @@ export default function DoorCounter({
   const [showNameInput, setShowNameInput] = useState(false);
   const [pendingClicks, setPendingClicks] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showPasswordInput, setShowPasswordInput] = useState(true);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const clickQueueRef = useRef<QueuedClick[]>([]);
   const isProcessingRef = useRef(false);
 
@@ -240,6 +244,14 @@ export default function DoorCounter({
     }
   }, [doorId, processQueue]);
 
+  // Check if already authenticated (stored in localStorage)
+  useEffect(() => {
+    const authKey = `door-auth-${doorId}`;
+    const authenticated = localStorage.getItem(authKey) === 'true';
+    setIsAuthenticated(authenticated);
+    setShowPasswordInput(!authenticated);
+  }, [doorId]);
+
   // Fetch count on mount
   useEffect(() => {
     async function fetchCount() {
@@ -263,6 +275,46 @@ export default function DoorCounter({
     // Delay fetch to allow queue to load first
     setTimeout(() => fetchCount(), 100);
   }, [doorId]);
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    
+    const passwordInput = (e.target as HTMLFormElement).elements.namedItem('password') as HTMLInputElement;
+    const enteredPassword = passwordInput.value.trim();
+    
+    if (!enteredPassword) {
+      setPasswordError('Password is required');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/doors/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          doorId,
+          password: enteredPassword,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setIsAuthenticated(true);
+        setShowPasswordInput(false);
+        setPassword('');
+        // Store authentication in localStorage (session-based, cleared on browser close)
+        localStorage.setItem(`door-auth-${doorId}`, 'true');
+      } else {
+        setPasswordError(result.error || 'Invalid password');
+        setPassword('');
+      }
+    } catch (error) {
+      console.error('Error verifying password:', error);
+      setPasswordError('Failed to verify password. Please try again.');
+    }
+  };
 
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,8 +423,60 @@ export default function DoorCounter({
     <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-gray-200">
       <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">{doorName}</h2>
       
+      {/* Password Input Section */}
+      {showPasswordInput ? (
+        <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+          <form onSubmit={handlePasswordSubmit} className="space-y-3">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Enter door password:
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                placeholder="Password"
+                required
+                className="flex-1 px-4 py-2 bg-white border-2 border-gray-400 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                autoFocus
+              />
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+              >
+                Verify
+              </button>
+            </div>
+            {passwordError && (
+              <p className="text-sm text-red-600 mt-1">{passwordError}</p>
+            )}
+          </form>
+        </div>
+      ) : (
+        <div className="mb-4 text-center">
+          <p className="text-sm text-gray-600">
+            Authenticated ✓
+            <button
+              onClick={() => {
+                setIsAuthenticated(false);
+                setShowPasswordInput(true);
+                localStorage.removeItem(`door-auth-${doorId}`);
+              }}
+              className="ml-2 text-blue-500 hover:text-blue-700 text-xs underline"
+            >
+              Change Password
+            </button>
+          </p>
+        </div>
+      )}
+      
       {/* Name Input Section */}
-      {showNameInput ? (
+      {!showPasswordInput && showNameInput ? (
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <form onSubmit={handleNameSubmit} className="space-y-3">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -426,10 +530,10 @@ export default function DoorCounter({
 
       <button
         onClick={incrementAndSave}
-        disabled={showNameInput}
-        className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-bold text-3xl py-12 px-6 rounded-xl transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 duration-200"
+        disabled={showNameInput || !isAuthenticated}
+        className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-bold text-3xl py-12 px-6 rounded-xl transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 duration-200"
       >
-        + Count Person
+        {!isAuthenticated ? 'Enter Password First' : '+ Count Person'}
       </button>
 
       {/* Pending clicks indicator */}
