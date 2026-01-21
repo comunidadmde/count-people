@@ -152,7 +152,7 @@ function getClientIP(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { doorId, userName, auditorium } = body;
+    const { doorId, userName, auditorium, passwordHash } = body;
 
     if (!doorId) {
       return NextResponse.json(
@@ -167,12 +167,37 @@ export async function POST(request: NextRequest) {
 
     const db = await getDatabase();
     
-    // Get door info to get auditorium
+    // Get door info to get auditorium and verify password (single DB query)
     const door = await db.collection('doors').findOne({ doorId });
-    if (!door || !door.auditorium) {
+    if (!door) {
       return NextResponse.json(
-        { success: false, error: 'Door not found or auditorium not assigned. Please configure the door first.' },
+        { success: false, error: 'Door not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (!door.auditorium) {
+      return NextResponse.json(
+        { success: false, error: 'Door auditorium not assigned. Please configure the door first.' },
         { status: 400 }
+      );
+    }
+
+    // Quick password verification using hash
+    if (passwordHash) {
+      // Verify password hash matches (simple base64 encoding check)
+      const expectedHash = btoa(door.password).substring(0, 16);
+      if (passwordHash !== expectedHash) {
+        return NextResponse.json(
+          { success: false, error: 'Password verification failed. Please re-authenticate.' },
+          { status: 401 }
+        );
+      }
+    } else {
+      // If no hash provided, reject (security)
+      return NextResponse.json(
+        { success: false, error: 'Password verification required.' },
+        { status: 401 }
       );
     }
 

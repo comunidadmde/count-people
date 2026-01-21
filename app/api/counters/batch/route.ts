@@ -44,22 +44,39 @@ export async function POST(request: NextRequest) {
 
     const db = await getDatabase();
     
-    // Get all doors to map doorId to auditorium
+    // Get all doors to map doorId to auditorium and password (single DB query)
     const doors = await db.collection('doors').find({}).toArray();
-    const doorToAuditorium: Record<string, string> = {};
+    const doorMap: Record<string, { auditorium: string; password: string }> = {};
     doors.forEach((door: any) => {
-      doorToAuditorium[door.doorId] = door.auditorium;
+      doorMap[door.doorId] = {
+        auditorium: door.auditorium,
+        password: door.password,
+      };
     });
 
-    // Prepare batch data - use auditorium from door configuration
+    // Prepare batch data - use auditorium from door configuration and verify passwords
     const batchData: CounterData[] = clicks.map((click) => {
-      const auditorium = doorToAuditorium[click.doorId];
-      if (!auditorium) {
-        throw new Error(`Door ${click.doorId} not found or auditorium not assigned`);
+      const door = doorMap[click.doorId];
+      if (!door) {
+        throw new Error(`Door ${click.doorId} not found`);
       }
+      if (!door.auditorium) {
+        throw new Error(`Door ${click.doorId} auditorium not assigned`);
+      }
+      
+      // Quick password verification using hash
+      if (click.passwordHash) {
+        const expectedHash = btoa(door.password).substring(0, 16);
+        if (click.passwordHash !== expectedHash) {
+          throw new Error(`Password verification failed for door ${click.doorId}`);
+        }
+      } else {
+        throw new Error(`Password verification required for door ${click.doorId}`);
+      }
+      
       return {
         doorId: click.doorId,
-        auditorium: auditorium,
+        auditorium: door.auditorium,
         timestamp: new Date(click.timestamp || Date.now()),
         ipAddress: click.ipAddress || ipAddress,
         userName: click.userName || 'Anonymous',

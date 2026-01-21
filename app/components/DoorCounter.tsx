@@ -13,6 +13,7 @@ interface QueuedClick {
   doorId: string;
   auditorium?: string;
   userName: string;
+  passwordHash: string; // Store password hash for verification
   timestamp: number;
   ipAddress?: string;
   retryCount?: number;
@@ -35,6 +36,7 @@ export default function DoorCounter({
   const [showPasswordInput, setShowPasswordInput] = useState(true);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const passwordHashRef = useRef<string>(''); // Store password hash for quick verification
   const clickQueueRef = useRef<QueuedClick[]>([]);
   const isProcessingRef = useRef(false);
 
@@ -60,6 +62,17 @@ export default function DoorCounter({
         console.error('Failed to save queue even after cleanup:', retryError);
       }
     }
+  }, [doorId]);
+
+  // Helper function to handle password verification failures
+  const handlePasswordVerificationFailure = useCallback(() => {
+    setIsAuthenticated(false);
+    setShowPasswordInput(true);
+    passwordHashRef.current = '';
+    sessionStorage.removeItem(`door-auth-${doorId}`);
+    setPasswordError('Password verification failed. Please enter password again.');
+    // Clear password field
+    setPassword('');
   }, [doorId]);
 
   // Process the queue and send to backend with retry logic
@@ -118,10 +131,40 @@ export default function DoorCounter({
           clearTimeout(timeoutId);
 
           if (!response.ok) {
+            // Check if it's a password verification error (401 Unauthorized)
+            if (response.status === 401) {
+              try {
+                const errorResult = await response.json();
+                if (errorResult.error && (
+                  errorResult.error.includes('Password') || 
+                  errorResult.error.includes('verification') ||
+                  errorResult.error.includes('authenticate')
+                )) {
+                  // Password verification failed - require re-authentication
+                  handlePasswordVerificationFailure();
+                  // Don't retry these clicks - user needs to re-authenticate
+                  return;
+                }
+              } catch (parseError) {
+                // If response is not JSON, still treat 401 as password error
+                handlePasswordVerificationFailure();
+                return;
+              }
+            }
             throw new Error(`HTTP error! status: ${response.status}`);
           }
 
           const result = await response.json();
+          
+          // Check for password verification errors in response
+          if (result.error && (
+            result.error.includes('Password') || 
+            result.error.includes('verification') ||
+            result.error.includes('authenticate')
+          )) {
+            handlePasswordVerificationFailure();
+            return;
+          }
           
           if (result.success) {
             // All clicks in batch succeeded
@@ -147,6 +190,17 @@ export default function DoorCounter({
           }
         } catch (error) {
           console.error('Error sending batch:', error);
+          
+          // Check if it's a password-related error (401)
+          if (error instanceof Error && (
+            error.message.includes('401') || 
+            error.message.includes('Password') ||
+            error.message.includes('verification')
+          )) {
+            handlePasswordVerificationFailure();
+            return;
+          }
+          
           // Increment retry count for failed batch
           batch.forEach((click) => {
             click.retryCount = (click.retryCount || 0) + 1;
@@ -203,7 +257,7 @@ export default function DoorCounter({
       setIsSyncing(false);
       isProcessingRef.current = false;
     }
-  }, [doorId, saveQueueToStorage]);
+  }, [doorId, saveQueueToStorage, handlePasswordVerificationFailure]);
 
   // Load user name and pending queue from localStorage on mount
   useEffect(() => {
@@ -244,12 +298,32 @@ export default function DoorCounter({
     }
   }, [doorId, processQueue]);
 
-  // Check if already authenticated (stored in localStorage)
+  // Check if already authenticated (stored in sessionStorage)
   useEffect(() => {
     const authKey = `door-auth-${doorId}`;
-    const authenticated = localStorage.getItem(authKey) === 'true';
-    setIsAuthenticated(authenticated);
-    setShowPasswordInput(!authenticated);
+    const storedHash = sessionStorage.getItem(authKey);
+    if (storedHash) {
+      setIsAuthenticated(true);
+      setShowPasswordInput(false);
+      passwordHashRef.current = storedHash;
+    } else {
+      // If not authenticated, check if there are pending clicks that need password
+      const savedQueue = localStorage.getItem(`counter-queue-${doorId}`);
+      if (savedQueue) {
+        try {
+          const queue = JSON.parse(savedQueue);
+          if (queue.length > 0 && queue[0].passwordHash) {
+            // Restore password hash from first click in queue
+            passwordHashRef.current = queue[0].passwordHash;
+            setIsAuthenticated(true);
+            setShowPasswordInput(false);
+            sessionStorage.setItem(authKey, queue[0].passwordHash);
+          }
+        } catch (error) {
+          // Ignore parsing errors
+        }
+      }
+    }
   }, [doorId]);
 
   // Fetch count on mount
@@ -301,11 +375,21 @@ export default function DoorCounter({
       const result = await response.json();
       
       if (result.success) {
+        // Create a simple hash of the password for verification (not for security, just for quick check)
+        // In production, you might want to use a proper hash, but for speed we'll use a simple one
+        const hash = btoa(enteredPassword).substring(0, 16); // Simple encoding for quick verification
+        passwordHashRef.current = hash;
         setIsAuthenticated(true);
         setShowPasswordInput(false);
         setPassword('');
-        // Store authentication in localStorage (session-based, cleared on browser close)
-        localStorage.setItem(`door-auth-${doorId}`, 'true');
+        setPasswordError(''); // Clear any previous errors
+        // Store password hash in sessionStorage (cleared on browser close)
+        sessionStorage.setItem(`door-auth-${doorId}`, hash);
+        
+        // Try to sync any pending clicks now that we're authenticated
+        if (clickQueueRef.current.length > 0) {
+          setTimeout(() => processQueue(), 500);
+        }
       } else {
         setPasswordError(result.error || 'Invalid password');
         setPassword('');
@@ -333,10 +417,18 @@ export default function DoorCounter({
 
   // Add click to queue
   const addClickToQueue = useCallback(() => {
+    if (!passwordHashRef.current) {
+      // Re-verify password if hash is missing
+      setShowPasswordInput(true);
+      setIsAuthenticated(false);
+      return;
+    }
+
     const click: QueuedClick = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       doorId,
       userName: userName.trim(),
+      passwordHash: passwordHashRef.current,
       timestamp: Date.now(),
       retryCount: 0,
     };
