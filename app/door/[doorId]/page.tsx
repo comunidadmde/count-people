@@ -1,12 +1,7 @@
 import DoorCounter from '@/app/components/DoorCounter';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-
-const doorNames: Record<string, string> = {
-  'door-1': 'Main Entrance',
-  'door-2': 'Side Door',
-  'door-3': 'Back Door',
-};
+import { getDatabase } from '@/lib/mongodb';
 
 export default async function DoorPage({
   params,
@@ -14,10 +9,32 @@ export default async function DoorPage({
   params: Promise<{ doorId: string }>;
 }) {
   const { doorId } = await params;
-  const doorName = doorNames[doorId];
-
-  if (!doorName) {
-    notFound();
+  
+  // Fetch door info from database
+  let doorName = doorId;
+  try {
+    const db = await getDatabase();
+    const door = await db.collection('doors').findOne({ doorId });
+    if (door) {
+      doorName = door.doorName;
+    } else {
+      // Fallback to default names if door not in database
+      const defaultNames: Record<string, string> = {
+        'door-1': 'Main Entrance',
+        'door-2': 'Side Door',
+        'door-3': 'Back Door',
+      };
+      doorName = defaultNames[doorId] || doorId;
+    }
+  } catch (error) {
+    console.error('Error fetching door:', error);
+    // Use fallback
+    const defaultNames: Record<string, string> = {
+      'door-1': 'Main Entrance',
+      'door-2': 'Side Door',
+      'door-3': 'Back Door',
+    };
+    doorName = defaultNames[doorId] || doorId;
   }
 
   return (

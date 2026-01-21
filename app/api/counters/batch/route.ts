@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     // Prepare batch data
     const batchData: CounterData[] = clicks.map((click) => ({
       doorId: click.doorId,
+      auditorium: click.auditorium || undefined,
       timestamp: new Date(click.timestamp || Date.now()),
       ipAddress: click.ipAddress || ipAddress,
       userName: click.userName || 'Anonymous',

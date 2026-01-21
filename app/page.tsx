@@ -1,12 +1,24 @@
 import DoorCounterDisplay from './components/DoorCounterDisplay';
 import Link from 'next/link';
+import { getDatabase } from '@/lib/mongodb';
 
-export default function Home() {
-  const doors = [
-    { id: 'door-1', name: 'Main Entrance' },
-    { id: 'door-2', name: 'Side Door' },
-    { id: 'door-3', name: 'Back Door' },
-  ];
+export default async function Home() {
+  // Fetch doors from database
+  let doors: { id: string; name: string }[] = [];
+  
+  try {
+    const db = await getDatabase();
+    const doorsData = await db.collection('doors').find({}).toArray();
+    if (doorsData.length > 0) {
+      doors = doorsData.map((door) => ({
+        id: door.doorId,
+        name: door.doorName,
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching doors:', error);
+    // Use default doors on error
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
@@ -46,7 +58,7 @@ export default function Home() {
           <ul className="list-disc list-inside space-y-2 text-gray-600">
             <li>Click on a door card to go to its counter page</li>
             <li>On the counter page, click the &quot;Count Person&quot; button to increment</li>
-            <li>The count is automatically saved to the database each time you click</li>
+            <li>All clicks are automatically saved, even with slow internet connections</li>
             <li>Each door maintains its own independent counter</li>
             <li>Contact an administrator to reset counters or view detailed statistics</li>
           </ul>

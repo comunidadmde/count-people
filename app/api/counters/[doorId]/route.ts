@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 
-// GET - Get count for a specific door (count of records)
+// GET - Get count for a specific door with auditorium breakdown
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ doorId: string }> }
@@ -13,6 +13,28 @@ export async function GET(
     // Count the number of records for this door
     const count = await db.collection('counters').countDocuments({ doorId });
     
+    // Get counts per auditorium
+    const auditoriumCounts = await db
+      .collection('counters')
+      .aggregate([
+        {
+          $match: { doorId },
+        },
+        {
+          $group: {
+            _id: '$auditorium',
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const auditoriumMap: Record<string, number> = {};
+    auditoriumCounts.forEach((item) => {
+      const auditorium = item._id || 'Unassigned';
+      auditoriumMap[auditorium] = item.count;
+    });
+    
     // Get the latest record for timestamp
     const latestCounter = await db
       .collection('counters')
@@ -21,12 +43,17 @@ export async function GET(
         { sort: { timestamp: -1 } }
       );
 
+    // Get door info
+    const door = await db.collection('doors').findOne({ doorId });
+
     return NextResponse.json({
       success: true,
       data: {
         doorId,
         count,
+        auditoriumCounts: auditoriumMap,
         lastUpdated: latestCounter?.timestamp || null,
+        door: door || null,
       },
     });
   } catch (error) {

@@ -3,6 +3,7 @@ import { getDatabase } from '@/lib/mongodb';
 
 export interface CounterData {
   doorId: string;
+  auditorium?: string;
   timestamp: Date;
   ipAddress?: string;
   userName?: string;
@@ -33,16 +34,43 @@ export async function GET() {
       ])
       .toArray();
 
-    // Create a map of door counts
+    // Get aggregated counts per door and auditorium
+    const auditoriumCounts = await db
+      .collection('counters')
+      .aggregate([
+        {
+          $group: {
+            _id: {
+              doorId: '$doorId',
+              auditorium: '$auditorium',
+            },
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    // Create maps
     const countsMap: Record<string, number> = {};
     doorCounts.forEach((item) => {
       countsMap[item._id] = item.count;
+    });
+
+    const auditoriumCountsMap: Record<string, Record<string, number>> = {};
+    auditoriumCounts.forEach((item) => {
+      const doorId = item._id.doorId;
+      const auditorium = item._id.auditorium || 'Unassigned';
+      if (!auditoriumCountsMap[doorId]) {
+        auditoriumCountsMap[doorId] = {};
+      }
+      auditoriumCountsMap[doorId][auditorium] = item.count;
     });
 
     return NextResponse.json({
       success: true,
       data: counters,
       doorCounts: countsMap,
+      auditoriumCounts: auditoriumCountsMap,
     });
   } catch (error) {
     console.error('Error fetching counters:', error);
@@ -110,7 +138,7 @@ function getClientIP(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { doorId, userName } = body;
+    const { doorId, userName, auditorium } = body;
 
     if (!doorId) {
       return NextResponse.json(
@@ -126,6 +154,7 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase();
     const counterData: CounterData = {
       doorId,
+      auditorium: auditorium || undefined,
       timestamp: new Date(),
       ipAddress,
       userName: userName || 'Anonymous',
@@ -136,10 +165,33 @@ export async function POST(request: NextRequest) {
     // Get the new count for this door
     const doorCount = await db.collection('counters').countDocuments({ doorId });
 
+    // Get auditorium counts
+    const auditoriumCounts = await db
+      .collection('counters')
+      .aggregate([
+        {
+          $match: { doorId },
+        },
+        {
+          $group: {
+            _id: '$auditorium',
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const auditoriumMap: Record<string, number> = {};
+    auditoriumCounts.forEach((item) => {
+      const aud = item._id || 'Unassigned';
+      auditoriumMap[aud] = item.count;
+    });
+
     return NextResponse.json({
       success: true,
       data: { ...counterData, _id: result.insertedId },
       count: doorCount,
+      auditoriumCounts: auditoriumMap,
     });
   } catch (error) {
     console.error('Error saving counter:', error);

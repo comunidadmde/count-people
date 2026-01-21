@@ -11,6 +11,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 interface CounterData {
   _id: string;
   doorId: string;
+  auditorium?: string;
   timestamp: string;
   ipAddress?: string;
   userName?: string;
@@ -20,49 +21,25 @@ interface DoorSummary {
   doorId: string;
   doorName: string;
   count: number;
+  auditoriumCounts: Record<string, number>;
   lastUpdated: string | null;
+}
+
+interface DoorInfo {
+  doorId: string;
+  doorName: string;
+  auditoriums: string[];
 }
 
 export default function AdminDashboardClient() {
   const router = useRouter();
   const [doors, setDoors] = useState<DoorSummary[]>([]);
   const [allCounters, setAllCounters] = useState<CounterData[]>([]);
+  const [doorInfos, setDoorInfos] = useState<Record<string, DoorInfo>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isResetting, setIsResetting] = useState(false);
 
-  const doorNames: Record<string, string> = {
-    'door-1': 'Main Entrance',
-    'door-2': 'Side Door',
-    'door-3': 'Back Door',
-  };
-
-  // Utility function to process counter data and calculate door statistics
-  const processCounterData = useCallback((counters: CounterData[], doorCounts: Record<string, number>) => {
-    const doorIds = ['door-1', 'door-2', 'door-3'];
-    
-    return doorIds.map((doorId) => {
-      // Filter counters for this door
-      const doorCounters = counters.filter((c) => c.doorId === doorId);
-      
-      // Sort by timestamp to get the latest
-      const sortedCounters = doorCounters.sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-      
-      // Get latest timestamp
-      const latestCounter = sortedCounters[0];
-      
-      // Get count from backend aggregation
-      const count = doorCounts[doorId] || 0;
-      
-      return {
-        doorId,
-        doorName: doorNames[doorId] || doorId,
-        count,
-        lastUpdated: latestCounter?.timestamp || null,
-      };
-    });
-  }, []);
+  // Removed processCounterData - logic moved into fetchData to avoid dependency issues
 
   // AG Grid column definitions
   const columnDefs: ColDef[] = useMemo(
@@ -71,10 +48,22 @@ export default function AdminDashboardClient() {
         field: 'doorId',
         headerName: 'Door',
         width: 150,
-        valueGetter: (params: ValueGetterParams) => doorNames[params.data.doorId] || params.data.doorId,
+        valueGetter: (params: ValueGetterParams) => {
+          const doorId = params.data?.doorId;
+          return doorInfos[doorId]?.doorName || doorId || '';
+        },
         sortable: true,
         filter: 'agTextColumnFilter',
         floatingFilter: true,
+      },
+      {
+        field: 'auditorium',
+        headerName: 'Auditorium',
+        width: 150,
+        sortable: true,
+        filter: 'agTextColumnFilter',
+        floatingFilter: true,
+        valueGetter: (params: ValueGetterParams) => params.data?.auditorium || 'Unassigned',
       },
       {
         field: 'userName',
@@ -83,7 +72,7 @@ export default function AdminDashboardClient() {
         sortable: true,
         filter: 'agTextColumnFilter',
         floatingFilter: true,
-        valueGetter: (params: ValueGetterParams) => params.data.userName || 'Anonymous',
+        valueGetter: (params: ValueGetterParams) => params.data?.userName || 'Anonymous',
       },
       {
         field: 'ipAddress',
@@ -92,7 +81,7 @@ export default function AdminDashboardClient() {
         sortable: true,
         filter: 'agTextColumnFilter',
         floatingFilter: true,
-        valueGetter: (params: ValueGetterParams) => params.data.ipAddress || 'N/A',
+        valueGetter: (params: ValueGetterParams) => params.data?.ipAddress || 'N/A',
         cellStyle: () => ({ fontFamily: 'monospace', fontSize: '0.875rem' }),
       },
       {
@@ -114,15 +103,18 @@ export default function AdminDashboardClient() {
             }
           },
         },
-        valueGetter: (params: ValueGetterParams) => new Date(params.data.timestamp).toLocaleString(),
+        valueGetter: (params: ValueGetterParams) => {
+          const timestamp = params.data?.timestamp;
+          return timestamp ? new Date(timestamp).toLocaleString() : '';
+        },
         comparator: (valueA: any, valueB: any, nodeA: any, nodeB: any) => {
-          const dateA = new Date(nodeA.data.timestamp).getTime();
-          const dateB = new Date(nodeB.data.timestamp).getTime();
+          const dateA = nodeA.data?.timestamp ? new Date(nodeA.data.timestamp).getTime() : 0;
+          const dateB = nodeB.data?.timestamp ? new Date(nodeB.data.timestamp).getTime() : 0;
           return dateA - dateB;
         },
       },
     ],
-    []
+    [doorInfos] // Include doorInfos so column updates when doors are loaded
   );
 
   // Default column properties
@@ -138,25 +130,69 @@ export default function AdminDashboardClient() {
 
   const fetchData = useCallback(async (isInitialLoad = false) => {
     try {
+      // Fetch doors info first
+      const doorsResponse = await fetch('/api/doors');
+      const doorsResult = await doorsResponse.json();
+      let doorsMap: Record<string, DoorInfo> = {};
+      if (doorsResult.success) {
+        doorsResult.data.forEach((door: DoorInfo) => {
+          doorsMap[door.doorId] = door;
+        });
+        setDoorInfos(doorsMap);
+      }
+
+      // Fetch counters
       const response = await fetch('/api/counters');
       const result = await response.json();
 
       if (result.success) {
         setAllCounters(result.data);
 
-        // Process counter data to get door summaries using aggregated counts from backend
-        const summaries = processCounterData(result.data, result.doorCounts || {});
-        setDoors(summaries);
+        // Use the latest doorInfos state or the one we just set
+        // We need to use a functional update or get the latest value
+        setDoors((prevDoors) => {
+          // Get door IDs from the doors we just fetched, or use defaults
+          const doorIds = Object.keys(doorsMap).length > 0 
+            ? Object.keys(doorsMap)
+            : ['door-1', 'door-2', 'door-3'];
+          
+          return doorIds.map((doorId) => {
+            // Filter counters for this door
+            const doorCounters = result.data.filter((c: CounterData) => c.doorId === doorId);
+            
+            // Sort by timestamp to get the latest
+            const sortedCounters = doorCounters.sort(
+              (a: CounterData, b: CounterData) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+            
+            // Get latest timestamp
+            const latestCounter = sortedCounters[0];
+            
+            // Get count from backend aggregation
+            const count = result.doorCounts?.[doorId] || 0;
+            
+            // Get auditorium counts
+            const audCounts = result.auditoriumCounts?.[doorId] || {};
+            
+            return {
+              doorId,
+              doorName: doorsMap[doorId]?.doorName || doorId,
+              count,
+              auditoriumCounts: audCounts,
+              lastUpdated: latestCounter?.timestamp || null,
+            };
+          });
+        });
       }
     } catch (error) {
-      console.error('Error fetching counters:', error);
+      console.error('Error fetching data:', error);
     } finally {
       // Only set loading to false on initial load
       if (isInitialLoad) {
         setIsLoading(false);
       }
     }
-  }, [processCounterData]);
+  }, []); // Remove processCounterData dependency to prevent infinite loop
 
   useEffect(() => {
     // Initial load
@@ -169,13 +205,15 @@ export default function AdminDashboardClient() {
 
     // Cleanup interval on unmount
     return () => clearInterval(interval);
-  }, [fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - fetchData is stable via useCallback
 
   const handleReset = async (doorId?: string) => {
+    const doorName = doorId ? (doorInfos[doorId]?.doorName || doorId) : '';
     if (
       !confirm(
         doorId
-          ? `Are you sure you want to reset ${doorNames[doorId]}?`
+          ? `Are you sure you want to reset ${doorName}?`
           : 'Are you sure you want to reset ALL counters?'
       )
     ) {
@@ -230,6 +268,12 @@ export default function AdminDashboardClient() {
           </div>
           <div className="flex gap-4">
             <Link
+              href="/admin/doors"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Manage Doors
+            </Link>
+            <Link
               href="/"
               className="px-4 py-2 text-gray-700 hover:text-gray-900"
             >
@@ -262,12 +306,37 @@ export default function AdminDashboardClient() {
                   </h2>
                   
                   <div className="mb-4">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm text-gray-600">Count:</span>
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className="text-sm text-gray-600">Total Count:</span>
                       <span className="text-4xl font-bold text-blue-600">
                         {door.count}
                       </span>
                     </div>
+                    
+                    {/* Auditorium Breakdown */}
+                    {doorInfos[door.doorId]?.auditoriums && doorInfos[door.doorId].auditoriums.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">By Auditorium:</p>
+                        <div className="space-y-1">
+                          {doorInfos[door.doorId].auditoriums.map((aud) => (
+                            <div key={aud} className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">{aud}:</span>
+                              <span className="font-semibold text-gray-800">
+                                {door.auditoriumCounts[aud] || 0}
+                              </span>
+                            </div>
+                          ))}
+                          {door.auditoriumCounts['Unassigned'] > 0 && (
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-500">Unassigned:</span>
+                              <span className="font-semibold text-gray-600">
+                                {door.auditoriumCounts['Unassigned']}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <p className="text-xs text-gray-500 mb-4">
