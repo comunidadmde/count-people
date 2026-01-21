@@ -66,6 +66,11 @@ export default function DoorCounter({
 
   // Helper function to handle password verification failures
   const handlePasswordVerificationFailure = useCallback(() => {
+    // Stop processing
+    isProcessingRef.current = false;
+    setIsSyncing(false);
+    
+    // Clear authentication
     setIsAuthenticated(false);
     setShowPasswordInput(true);
     passwordHashRef.current = '';
@@ -73,6 +78,17 @@ export default function DoorCounter({
     setPasswordError('Password verification failed. Please enter password again.');
     // Clear password field
     setPassword('');
+    
+    // Clear all pending clicks from queue
+    clickQueueRef.current = [];
+    setPendingClicks(0);
+    
+    // Remove from localStorage
+    try {
+      localStorage.removeItem(`counter-queue-${doorId}`);
+    } catch (error) {
+      console.error('Error clearing queue from localStorage:', error);
+    }
   }, [doorId]);
 
   // Process the queue and send to backend with retry logic
@@ -133,23 +149,10 @@ export default function DoorCounter({
           if (!response.ok) {
             // Check if it's a password verification error (401 Unauthorized)
             if (response.status === 401) {
-              try {
-                const errorResult = await response.json();
-                if (errorResult.error && (
-                  errorResult.error.includes('Password') || 
-                  errorResult.error.includes('verification') ||
-                  errorResult.error.includes('authenticate')
-                )) {
-                  // Password verification failed - require re-authentication
-                  handlePasswordVerificationFailure();
-                  // Don't retry these clicks - user needs to re-authenticate
-                  return;
-                }
-              } catch (parseError) {
-                // If response is not JSON, still treat 401 as password error
-                handlePasswordVerificationFailure();
-                return;
-              }
+              // Password verification failed - require re-authentication
+              handlePasswordVerificationFailure();
+              // Stop processing - don't retry these clicks
+              return;
             }
             throw new Error(`HTTP error! status: ${response.status}`);
           }
@@ -231,15 +234,16 @@ export default function DoorCounter({
         setLastSaved(new Date());
       }
 
-      // If there are still pending clicks, schedule another retry
-      if (clickQueueRef.current.length > 0) {
+      // If there are still pending clicks and user is authenticated, schedule another retry
+      // Don't retry if authentication failed - user needs to re-authenticate first
+      if (clickQueueRef.current.length > 0 && passwordHashRef.current) {
         const maxRetryCount = Math.max(
           ...clickQueueRef.current.map((c) => c.retryCount || 0)
         );
         if (maxRetryCount < 10) {
-          // Only retry up to 10 times
+          // Only retry up to 10 times, and only if still authenticated
           setTimeout(() => {
-            if (clickQueueRef.current.length > 0) {
+            if (clickQueueRef.current.length > 0 && passwordHashRef.current) {
               processQueue();
             }
           }, 2000);
@@ -247,7 +251,15 @@ export default function DoorCounter({
       }
     } catch (error) {
       console.error('Error syncing queue:', error);
-      // Increment retry count for all clicks
+      
+      // Check if it's an authentication error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('401') || errorMessage.includes('Password') || errorMessage.includes('verification')) {
+        handlePasswordVerificationFailure();
+        return; // Stop processing - don't retry
+      }
+      
+      // Increment retry count for all clicks (only for non-auth errors)
       clickQueueRef.current.forEach((click) => {
         click.retryCount = (click.retryCount || 0) + 1;
         click.lastRetry = Date.now();
@@ -320,7 +332,7 @@ export default function DoorCounter({
             sessionStorage.setItem(authKey, queue[0].passwordHash);
           }
         } catch (error) {
-          // Ignore parsing errors
+          console.error('Error parsing queue:', error);
         }
       }
     }

@@ -54,26 +54,42 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // Prepare batch data - use auditorium from door configuration and verify passwords
-    const batchData: CounterData[] = clicks.map((click) => {
+    // Verify passwords first before processing
+    for (const click of clicks) {
       const door = doorMap[click.doorId];
       if (!door) {
-        throw new Error(`Door ${click.doorId} not found`);
+        return NextResponse.json(
+          { success: false, error: `Door ${click.doorId} not found.` },
+          { status: 404 }
+        );
       }
       if (!door.auditorium) {
-        throw new Error(`Door ${click.doorId} auditorium not assigned`);
+        return NextResponse.json(
+          { success: false, error: `Door ${click.doorId} auditorium not assigned.` },
+          { status: 400 }
+        );
       }
       
       // Quick password verification using hash
       if (click.passwordHash) {
         const expectedHash = btoa(door.password).substring(0, 16);
         if (click.passwordHash !== expectedHash) {
-          throw new Error(`Password verification failed for door ${click.doorId}`);
+          return NextResponse.json(
+            { success: false, error: 'Password verification failed. Please re-authenticate.' },
+            { status: 401 }
+          );
         }
       } else {
-        throw new Error(`Password verification required for door ${click.doorId}`);
+        return NextResponse.json(
+          { success: false, error: 'Password verification required.' },
+          { status: 401 }
+        );
       }
-      
+    }
+
+    // Prepare batch data - use auditorium from door configuration
+    const batchData: CounterData[] = clicks.map((click) => {
+      const door = doorMap[click.doorId];
       return {
         doorId: click.doorId,
         auditorium: door.auditorium,
@@ -110,6 +126,18 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error saving batch counters:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Check if it's a password-related error
+    if (errorMessage.includes('Password') || errorMessage.includes('verification')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Password verification failed. Please re-authenticate.'
+        },
+        { status: 401 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
