@@ -46,13 +46,14 @@ export default function AdminDashboardClient() {
 
   // Removed processCounterData - logic moved into fetchData to avoid dependency issues
 
-  // AG Grid column definitions
+  // AG Grid column definitions - responsive widths
   const columnDefs: ColDef[] = useMemo(
     () => [
       {
         field: 'doorId',
         headerName: t('door'),
-        width: 150,
+        minWidth: 120,
+        flex: 1,
         valueGetter: (params: ValueGetterParams) => {
           const doorId = params.data?.doorId;
           return doorInfos[doorId]?.doorName || doorId || '';
@@ -64,7 +65,8 @@ export default function AdminDashboardClient() {
       {
         field: 'auditorium',
         headerName: t('auditorium'),
-        width: 150,
+        minWidth: 120,
+        flex: 1,
         sortable: true,
         filter: 'agTextColumnFilter',
         floatingFilter: true,
@@ -76,7 +78,8 @@ export default function AdminDashboardClient() {
       {
         field: 'userName',
         headerName: t('userName'),
-        width: 150,
+        minWidth: 120,
+        flex: 1,
         sortable: true,
         filter: 'agTextColumnFilter',
         floatingFilter: true,
@@ -85,7 +88,8 @@ export default function AdminDashboardClient() {
       {
         field: 'ipAddress',
         headerName: t('ipAddress'),
-        width: 150,
+        minWidth: 120,
+        flex: 1,
         sortable: true,
         filter: 'agTextColumnFilter',
         floatingFilter: true,
@@ -95,7 +99,8 @@ export default function AdminDashboardClient() {
       {
         field: 'timestamp',
         headerName: t('timestamp'),
-        width: 200,
+        minWidth: 180,
+        flex: 1.2,
         sortable: true,
         filter: 'agDateColumnFilter',
         floatingFilter: true,
@@ -262,31 +267,31 @@ export default function AdminDashboardClient() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-12 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2">
               {t('title')}
             </h1>
-            <p className="text-gray-600">{t('subtitle')}</p>
+            <p className="text-sm sm:text-base text-gray-600">{t('subtitle')}</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
             <Link
               href="/admin/doors"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center text-sm sm:text-base"
             >
               {t('manageDoors')}
             </Link>
             <Link
               href="/"
-              className="px-4 py-2 text-gray-700 hover:text-gray-900"
+              className="px-4 py-2 text-gray-700 hover:text-gray-900 rounded-lg text-center text-sm sm:text-base"
             >
               {tCommon('home')}
             </Link>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm sm:text-base"
             >
               {tCommon('logout')}
             </button>
@@ -294,18 +299,18 @@ export default function AdminDashboardClient() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">{tCommon('loading')}</p>
+          <div className="text-center py-8 sm:py-12">
+            <p className="text-sm sm:text-base text-gray-600">{tCommon('loading')}</p>
           </div>
         ) : (
           <>
             {/* Auditorium Totals */}
             {Object.keys(auditoriumTotals).length > 0 && (
-              <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
                   {t('totalsByAuditorium')}
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {Object.entries(auditoriumTotals)
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([auditorium, count]) => (
@@ -314,7 +319,7 @@ export default function AdminDashboardClient() {
                         className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200"
                       >
                         <div className="text-sm text-gray-600 mb-1">{auditorium}</div>
-                        <div className="text-4xl font-bold text-blue-600">{count}</div>
+                        <div className="text-3xl sm:text-4xl font-bold text-blue-600">{count}</div>
                       </div>
                     ))}
                 </div>
@@ -363,40 +368,42 @@ export default function AdminDashboardClient() {
             </div>
 
             {/* Reset All Button */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
                 {t('bulkActions')}
               </h2>
               <button
                 onClick={() => handleReset()}
                 disabled={isResetting}
-                className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors text-sm sm:text-base"
               >
                 {isResetting ? tCommon('resetting') : tCommon('resetAll')}
               </button>
             </div>
 
             {/* All Counter Records */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 overflow-hidden">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
                 {t('allCounterRecords')}
               </h2>
-              <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-                <AgGridReact
-                  rowData={allCounters.sort(
-                    (a, b) =>
-                      new Date(b.timestamp).getTime() -
-                      new Date(a.timestamp).getTime()
-                  )}
-                  columnDefs={columnDefs}
-                  defaultColDef={defaultColDef}
-                  pagination={true}
-                  paginationPageSize={20}
-                  animateRows={true}
-                  rowSelection="single"
-                  suppressRowClickSelection={false}
-                  domLayout="normal"
-                />
+              <div className="w-full overflow-x-auto">
+                <div className="ag-theme-alpine" style={{ height: '400px', minWidth: '100%', width: '100%' }}>
+                  <AgGridReact
+                    rowData={allCounters.sort(
+                      (a, b) =>
+                        new Date(b.timestamp).getTime() -
+                        new Date(a.timestamp).getTime()
+                    )}
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    pagination={true}
+                    paginationPageSize={20}
+                    animateRows={true}
+                    rowSelection="single"
+                    suppressRowClickSelection={false}
+                    domLayout="normal"
+                  />
+                </div>
               </div>
             </div>
           </>
