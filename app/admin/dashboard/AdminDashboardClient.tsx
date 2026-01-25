@@ -218,15 +218,8 @@ export default function AdminDashboardClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount - fetchData is stable via useCallback
 
-  const handleReset = async (doorId?: string) => {
-    const doorName = doorId ? (doorInfos[doorId]?.doorName || doorId) : '';
-    if (
-      !confirm(
-        doorId
-          ? tCommon('resetDoorConfirm', { doorName })
-          : tCommon('resetAllConfirm')
-      )
-    ) {
+  const handleReset = async () => {
+    if (!confirm(tCommon('resetAllConfirm'))) {
       return;
     }
 
@@ -237,7 +230,7 @@ export default function AdminDashboardClient() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ doorId }),
+        body: JSON.stringify({}),
       });
 
       const result = await response.json();
@@ -349,20 +342,13 @@ export default function AdminDashboardClient() {
                     </div>
                   </div>
                   
-                  <p className="text-xs text-gray-500 mb-4">
+                  <p className="text-xs text-gray-500">
                     {door.lastUpdated
                       ? `${t('lastUpdated')}: ${new Date(
                           door.lastUpdated
                         ).toLocaleString()}`
                       : tCommon('noData')}
                   </p>
-                  <button
-                    onClick={() => handleReset(door.doorId)}
-                    disabled={isResetting}
-                    className="w-full bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                  >
-                    {tCommon('resetCounter')}
-                  </button>
                 </div>
               ))}
             </div>
