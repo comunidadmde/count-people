@@ -128,7 +128,11 @@
       "doorSaved": "Door saved successfully!",
       "doorSaveFailed": "Failed to save door",
       "auditoriumRequired": "Auditorium is required",
-      "passwordRequired": "Password is required"
+      "passwordRequired": "Password is required",
+      "deleteDoor": "Delete Door",
+      "deleteDoorConfirm": "Are you sure you want to delete the door \"{doorName}\"? This action cannot be undone.",
+      "doorDeleted": "Door deleted successfully",
+      "doorDeleteFailed": "Failed to delete door"
     }
   }
 }

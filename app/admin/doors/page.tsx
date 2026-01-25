@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 interface DoorInfo {
+  _id?: string;
   doorId: string;
   doorName: string;
   auditorium: string;
@@ -18,7 +19,7 @@ export default function DoorsManagementPage() {
   const [doors, setDoors] = useState<DoorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingDoor, setEditingDoor] = useState<DoorInfo | null>(null);
-  const [formData, setFormData] = useState({ doorId: '', doorName: '', auditorium: '', password: '' });
+  const [formData, setFormData] = useState({ doorName: '', auditorium: '', password: '' });
 
   useEffect(() => {
     fetchDoors();
@@ -41,6 +42,11 @@ export default function DoorsManagementPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!formData.doorName.trim()) {
+        alert(t('admin.doors.doorName') + ' ' + t('common.required'));
+        return;
+      }
+
       if (!formData.auditorium.trim()) {
         alert(t('admin.doors.auditoriumRequired'));
         return;
@@ -54,10 +60,14 @@ export default function DoorsManagementPage() {
 
       // If editing and password is empty, don't send it (will keep current password)
       const requestBody: any = {
-        doorId: formData.doorId,
-        doorName: formData.doorName,
+        doorName: formData.doorName.trim(),
         auditorium: formData.auditorium.trim(),
       };
+
+      // Include _id if editing
+      if (editingDoor?._id) {
+        requestBody._id = editingDoor._id;
+      }
 
       // Only include password if it's provided (for new doors or when updating)
       if (formData.password.trim()) {
@@ -77,7 +87,7 @@ export default function DoorsManagementPage() {
       const result = await response.json();
       if (result.success) {
         alert(t('admin.doors.doorSaved'));
-        setFormData({ doorId: '', doorName: '', auditorium: '', password: '' });
+        setFormData({ doorName: '', auditorium: '', password: '' });
         setEditingDoor(null);
         fetchDoors();
       } else {
@@ -92,7 +102,6 @@ export default function DoorsManagementPage() {
   const handleEdit = (door: DoorInfo) => {
     setEditingDoor(door);
     setFormData({
-      doorId: door.doorId,
       doorName: door.doorName,
       auditorium: door.auditorium,
       password: '', // Don't pre-fill password for security
@@ -101,7 +110,38 @@ export default function DoorsManagementPage() {
 
   const handleCancel = () => {
     setEditingDoor(null);
-    setFormData({ doorId: '', doorName: '', auditorium: '', password: '' });
+    setFormData({ doorName: '', auditorium: '', password: '' });
+  };
+
+  const handleDelete = async (door: DoorInfo) => {
+    if (!door._id) {
+      alert(t('admin.doors.doorDeleteFailed') + ': ' + 'Invalid door ID');
+      return;
+    }
+
+    const confirmMessage = t('admin.doors.deleteDoorConfirm', { doorName: door.doorName });
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/doors', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _id: door._id }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(t('admin.doors.doorDeleted'));
+        fetchDoors();
+      } else {
+        alert(t('admin.doors.doorDeleteFailed') + ': ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error deleting door:', error);
+      alert(t('admin.doors.doorDeleteFailed'));
+    }
   };
 
   if (isLoading) {
@@ -139,22 +179,8 @@ export default function DoorsManagementPage() {
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="doorId" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('admin.doors.doorId')} ({t('admin.doors.doorIdHelp')})
-              </label>
-              <input
-                id="doorId"
-                type="text"
-                value={formData.doorId}
-                onChange={(e) => setFormData({ ...formData, doorId: e.target.value })}
-                required
-                className="w-full px-4 py-2 border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder={t('admin.doors.doorIdPlaceholder')}
-              />
-            </div>
-            <div>
               <label htmlFor="doorName" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('admin.doors.doorName')}
+                {t('admin.doors.doorName')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="doorName"
@@ -165,6 +191,9 @@ export default function DoorsManagementPage() {
                 className="w-full px-4 py-2 border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder={t('admin.doors.doorNamePlaceholder')}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                {editingDoor ? t('admin.doors.doorIdHelp') : t('admin.doors.doorIdHelp')}
+              </p>
             </div>
             <div>
               <label htmlFor="auditorium" className="block text-sm font-medium text-gray-700 mb-1">
@@ -229,20 +258,28 @@ export default function DoorsManagementPage() {
             <div className="space-y-4">
               {doors.map((door) => (
                 <div
-                  key={door.doorId}
+                  key={door._id || door.doorId}
                   className="border-2 border-gray-200 rounded-lg p-4"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="text-xl font-bold text-gray-800">{door.doorName}</h3>
                       <p className="text-sm text-gray-600">ID: {door.doorId}</p>
                     </div>
-                    <button
-                      onClick={() => handleEdit(door)}
-                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors"
-                    >
-                      {t('common.edit')}
-                    </button>
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => handleEdit(door)}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors"
+                      >
+                        {t('common.edit')}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(door)}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-colors"
+                      >
+                        {t('common.delete')}
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-3">
                     <p className="text-sm font-semibold text-gray-700 mb-1">{t('admin.dashboard.auditorium')}:</p>
