@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDatabase();
+    const body = await request.json();
+    const { saveHistory = true } = body; // Default to true for backward compatibility
 
     // Get all doors
     const doors = await db.collection('doors').find({}).toArray();
@@ -82,31 +84,36 @@ export async function POST(request: NextRequest) {
       auditoriumTotalsMap[item._id] = item.count;
     });
 
-    // Build history entry with all door statuses
-    const historyEntry = {
-      timestamp: new Date(),
-      totalRecords,
-      firstCountDate: firstCount?.timestamp || null,
-      lastCountDate: lastCount?.timestamp || null,
-      doors: doors.map((door: any) => ({
-        doorId: door.doorId,
-        doorName: door.doorName,
-        auditorium: door.auditorium || 'Unassigned',
-        count: countsMap[door.doorId] || 0,
-      })),
-      auditoriumTotals: auditoriumTotalsMap,
-    };
+    // Save to history collection only if requested
+    if (saveHistory) {
+      // Build history entry with all door statuses
+      const historyEntry = {
+        timestamp: new Date(),
+        totalRecords,
+        firstCountDate: firstCount?.timestamp || null,
+        lastCountDate: lastCount?.timestamp || null,
+        doors: doors.map((door: any) => ({
+          doorId: door.doorId,
+          doorName: door.doorName,
+          auditorium: door.auditorium || 'Unassigned',
+          count: countsMap[door.doorId] || 0,
+        })),
+        auditoriumTotals: auditoriumTotalsMap,
+      };
 
-    // Save to history collection
-    await db.collection('history').insertOne(historyEntry);
+      // Save to history collection
+      await db.collection('history').insertOne(historyEntry);
+    }
 
     // Reset all doors by deleting all records (empty filter deletes all documents)
     const result = await db.collection('counters').deleteMany({});
 
     return NextResponse.json({
       success: true,
-      message: `All counters have been reset (${result.deletedCount} records deleted). History saved.`,
-      historySaved: true,
+      message: saveHistory
+        ? `All counters have been reset (${result.deletedCount} records deleted). History saved.`
+        : `All counters have been reset (${result.deletedCount} records deleted).`,
+      historySaved: saveHistory,
     });
   } catch (error) {
     console.error('Error resetting counters:', error);

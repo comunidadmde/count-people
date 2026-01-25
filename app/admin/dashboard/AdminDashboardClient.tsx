@@ -331,8 +331,12 @@ export default function AdminDashboardClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount - fetchData is stable via useCallback
 
-  const handleReset = async () => {
-    if (!confirm(tCommon('resetAllConfirm'))) {
+  const handleReset = async (saveHistory: boolean) => {
+    const confirmMessage = saveHistory
+      ? t('resetWithHistoryConfirm')
+      : t('resetWithoutHistoryConfirm');
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -343,7 +347,7 @@ export default function AdminDashboardClient() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ saveHistory }),
       });
 
       const result = await response.json();
@@ -466,18 +470,27 @@ export default function AdminDashboardClient() {
               ))}
             </div>
 
-            {/* Reset All Button */}
+            {/* Reset All Buttons */}
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
                 {t('bulkActions')}
               </h2>
-              <button
-                onClick={() => handleReset()}
-                disabled={isResetting}
-                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors text-sm sm:text-base"
-              >
-                {isResetting ? tCommon('resetting') : tCommon('resetAll')}
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => handleReset(true)}
+                  disabled={isResetting}
+                  className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors text-sm sm:text-base"
+                >
+                  {isResetting ? tCommon('resetting') : t('resetAndSaveHistory')}
+                </button>
+                <button
+                  onClick={() => handleReset(false)}
+                  disabled={isResetting}
+                  className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-semibold py-3 px-6 rounded-lg transition-colors text-sm sm:text-base"
+                >
+                  {isResetting ? tCommon('resetting') : t('resetWithoutHistory')}
+                </button>
+              </div>
             </div>
 
             {/* Records Table with Tabs */}
