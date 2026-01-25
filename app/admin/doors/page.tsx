@@ -14,6 +14,7 @@ interface DoorInfo {
 
 export default function DoorsManagementPage() {
   const router = useRouter();
+  const t = useTranslations();
   const [doors, setDoors] = useState<DoorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingDoor, setEditingDoor] = useState<DoorInfo | null>(null);
@@ -102,8 +103,6 @@ export default function DoorsManagementPage() {
     setEditingDoor(null);
     setFormData({ doorId: '', doorName: '', auditorium: '', password: '' });
   };
-
-  const t = useTranslations();
 
   if (isLoading) {
     return (

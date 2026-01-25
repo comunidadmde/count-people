@@ -12,6 +12,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   return {
     locale,
     messages: (await import(`./messages/${locale}.json`)).default,
-    timeZone: 'America/Bogota' // Set timezone to avoid SSR/client mismatches
+    timeZone: 'America/Mexico_City', // Set timezone to avoid SSR/client mismatches
+    now: new Date() // Provide explicit now to avoid ENVIRONMENT_FALLBACK during static generation
   };
 });

@@ -122,7 +122,8 @@ export default function AdminDashboardClient() {
         },
       },
     ],
-    [doorInfos, locale] // Include doorInfos and locale so column updates when doors are loaded or language changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [doorInfos, locale] // Include doorInfos and locale so column updates when doors are loaded or language changes. 't' is stable and changes with locale.
   );
 
   // Default column properties

@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
 import { locales, defaultLocale } from '@/i18n';
 
 export default function LanguageSwitcher() {
   const [currentLocale, setCurrentLocale] = useState<string>(defaultLocale);
-  const t = useTranslations('common');
 
   useEffect(() => {
     // Get locale from localStorage (client-side only)

@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
+// Force dynamic rendering to avoid ENVIRONMENT_FALLBACK during static generation
+export const dynamic = 'force-dynamic';
+
 export default function AdminLogin() {
   const t = useTranslations();
   const [password, setPassword] = useState('');
