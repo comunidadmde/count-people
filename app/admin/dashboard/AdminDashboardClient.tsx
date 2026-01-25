@@ -32,6 +32,21 @@ interface DoorInfo {
   auditorium: string;
 }
 
+interface HistoryEntry {
+  _id: string;
+  timestamp: string;
+  totalRecords: number;
+  firstCountDate: string | null;
+  lastCountDate: string | null;
+  doors: Array<{
+    doorId: string;
+    doorName: string;
+    auditorium: string;
+    count: number;
+  }>;
+  auditoriumTotals: Record<string, number>;
+}
+
 export default function AdminDashboardClient() {
   const t = useTranslations('admin.dashboard');
   const tCommon = useTranslations('common');
@@ -41,8 +56,10 @@ export default function AdminDashboardClient() {
   const [allCounters, setAllCounters] = useState<CounterData[]>([]);
   const [doorInfos, setDoorInfos] = useState<Record<string, DoorInfo>>({});
   const [auditoriumTotals, setAuditoriumTotals] = useState<Record<string, number>>({});
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isResetting, setIsResetting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
 
   // Removed processCounterData - logic moved into fetchData to avoid dependency issues
 
@@ -142,6 +159,95 @@ export default function AdminDashboardClient() {
     []
   );
 
+  // History table column definitions
+  const historyColumnDefs: ColDef[] = useMemo(
+    () => [
+      {
+        field: 'timestamp',
+        headerName: t('resetDate'),
+        minWidth: 180,
+        flex: 1.2,
+        sortable: true,
+        filter: 'agDateColumnFilter',
+        floatingFilter: true,
+        valueGetter: (params: ValueGetterParams) => {
+          const timestamp = params.data?.timestamp;
+          return timestamp ? new Date(timestamp).toLocaleString() : '';
+        },
+        comparator: (valueA: any, valueB: any, nodeA: any, nodeB: any) => {
+          const dateA = nodeA.data?.timestamp ? new Date(nodeA.data.timestamp).getTime() : 0;
+          const dateB = nodeB.data?.timestamp ? new Date(nodeB.data.timestamp).getTime() : 0;
+          return dateB - dateA; // Most recent first
+        },
+      },
+      {
+        field: 'firstCountDate',
+        headerName: t('firstCountDate'),
+        minWidth: 180,
+        flex: 1.2,
+        sortable: true,
+        filter: 'agDateColumnFilter',
+        floatingFilter: true,
+        valueGetter: (params: ValueGetterParams) => {
+          const date = params.data?.firstCountDate;
+          return date ? new Date(date).toLocaleString() : t('nA');
+        },
+      },
+      {
+        field: 'lastCountDate',
+        headerName: t('lastCountDate'),
+        minWidth: 180,
+        flex: 1.2,
+        sortable: true,
+        filter: 'agDateColumnFilter',
+        floatingFilter: true,
+        valueGetter: (params: ValueGetterParams) => {
+          const date = params.data?.lastCountDate;
+          return date ? new Date(date).toLocaleString() : t('nA');
+        },
+      },
+      {
+        field: 'totalRecords',
+        headerName: t('totalRecords'),
+        minWidth: 120,
+        flex: 1,
+        sortable: true,
+        filter: 'agNumberColumnFilter',
+        floatingFilter: true,
+        valueGetter: (params: ValueGetterParams) => params.data?.totalRecords || 0,
+      },
+      {
+        field: 'doors',
+        headerName: t('doors'),
+        minWidth: 200,
+        flex: 2,
+        sortable: false,
+        filter: false,
+        valueGetter: (params: ValueGetterParams) => {
+          const doors = params.data?.doors || [];
+          return doors.map((d: any) => `${d.doorName}: ${d.count}`).join(', ');
+        },
+        cellStyle: () => ({ fontSize: '0.875rem' }),
+      },
+      {
+        field: 'auditoriumTotals',
+        headerName: t('auditoriumTotals'),
+        minWidth: 200,
+        flex: 2,
+        sortable: false,
+        filter: false,
+        valueGetter: (params: ValueGetterParams) => {
+          const totals = params.data?.auditoriumTotals || {};
+          return Object.entries(totals)
+            .map(([aud, count]) => `${aud}: ${count}`)
+            .join(', ');
+        },
+        cellStyle: () => ({ fontSize: '0.875rem' }),
+      },
+    ],
+    [locale, t]
+  );
+
   const fetchData = useCallback(async (isInitialLoad = false) => {
     try {
       // Fetch doors info first
@@ -193,6 +299,13 @@ export default function AdminDashboardClient() {
             };
           });
         });
+      }
+
+      // Fetch history
+      const historyResponse = await fetch('/api/admin/history');
+      const historyResult = await historyResponse.json();
+      if (historyResult.success) {
+        setHistory(historyResult.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -367,29 +480,71 @@ export default function AdminDashboardClient() {
               </button>
             </div>
 
-            {/* All Counter Records */}
+            {/* Records Table with Tabs */}
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 overflow-hidden">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
-                {t('allCounterRecords')}
+                {t('recordsAndHistory')}
               </h2>
+              
+              {/* Tabs */}
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  onClick={() => setActiveTab('current')}
+                  className={`px-4 py-2 font-semibold text-sm sm:text-base transition-colors ${
+                    activeTab === 'current'
+                      ? 'border-b-2 border-blue-600 text-blue-600'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  {t('currentRecords')}
+                </button>
+                <button
+                  onClick={() => setActiveTab('history')}
+                  className={`px-4 py-2 font-semibold text-sm sm:text-base transition-colors ${
+                    activeTab === 'history'
+                      ? 'border-b-2 border-blue-600 text-blue-600'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  {t('history')}
+                </button>
+              </div>
+
+              {/* Tab Content */}
               <div className="w-full overflow-x-auto">
-                <div className="ag-theme-alpine" style={{ height: '400px', minWidth: '100%', width: '100%' }}>
-                  <AgGridReact
-                    rowData={allCounters.sort(
-                      (a, b) =>
-                        new Date(b.timestamp).getTime() -
-                        new Date(a.timestamp).getTime()
-                    )}
-                    columnDefs={columnDefs}
-                    defaultColDef={defaultColDef}
-                    pagination={true}
-                    paginationPageSize={20}
-                    animateRows={true}
-                    rowSelection="single"
-                    suppressRowClickSelection={false}
-                    domLayout="normal"
-                  />
-                </div>
+                {activeTab === 'current' ? (
+                  <div className="ag-theme-alpine" style={{ height: '400px', minWidth: '100%', width: '100%' }}>
+                    <AgGridReact
+                      rowData={allCounters.sort(
+                        (a, b) =>
+                          new Date(b.timestamp).getTime() -
+                          new Date(a.timestamp).getTime()
+                      )}
+                      columnDefs={columnDefs}
+                      defaultColDef={defaultColDef}
+                      pagination={true}
+                      paginationPageSize={20}
+                      animateRows={true}
+                      rowSelection="single"
+                      suppressRowClickSelection={false}
+                      domLayout="normal"
+                    />
+                  </div>
+                ) : (
+                  <div className="ag-theme-alpine" style={{ height: '400px', minWidth: '100%', width: '100%' }}>
+                    <AgGridReact
+                      rowData={history}
+                      columnDefs={historyColumnDefs}
+                      defaultColDef={defaultColDef}
+                      pagination={true}
+                      paginationPageSize={20}
+                      animateRows={true}
+                      rowSelection="single"
+                      suppressRowClickSelection={false}
+                      domLayout="normal"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </>

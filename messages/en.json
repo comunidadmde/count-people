@@ -33,7 +33,7 @@
     "resetting": "Resetting...",
     "areYouSure": "Are you sure?",
     "resetDoorConfirm": "Are you sure you want to reset {doorName}?",
-    "resetAllConfirm": "Are you sure you want to reset ALL counters?",
+    "resetAllConfirm": "Are you sure you want to reset ALL counters? The current status of all doors will be saved to history before resetting.",
     "success": "Success",
     "error": "Error",
     "failed": "Failed",
@@ -102,7 +102,15 @@
       "resetSuccess": "Counter reset successfully",
       "resetFailed": "Failed to reset counter",
       "resetAllSuccess": "All counters reset successfully",
-      "resetAllFailed": "Failed to reset all counters"
+      "resetAllFailed": "Failed to reset all counters",
+      "recordsAndHistory": "Records & History",
+      "currentRecords": "Current Records",
+      "history": "History",
+      "resetDate": "Reset Date",
+      "firstCountDate": "First Count",
+      "lastCountDate": "Last Count",
+      "totalRecords": "Total Records",
+      "auditoriumTotals": "Auditorium Totals"
     },
     "doors": {
       "title": "Manage Doors & Auditoriums",

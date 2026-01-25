@@ -33,7 +33,7 @@
     "resetting": "Restableciendo...",
     "areYouSure": "¿Está seguro?",
     "resetDoorConfirm": "¿Está seguro de que desea restablecer {doorName}?",
-    "resetAllConfirm": "¿Está seguro de que desea restablecer TODOS los contadores?",
+    "resetAllConfirm": "¿Está seguro de que desea restablecer TODOS los contadores? El estado actual de todas las puertas se guardará en el historial antes de restablecer.",
     "success": "Éxito",
     "error": "Error",
     "failed": "Falló",
@@ -102,7 +102,15 @@
       "resetSuccess": "Contador restablecido exitosamente",
       "resetFailed": "Error al restablecer contador",
       "resetAllSuccess": "Todos los contadores fueron restablecidos exitosamente",
-      "resetAllFailed": "Error al restablecer todos los contadores"
+      "resetAllFailed": "Error al restablecer todos los contadores",
+      "recordsAndHistory": "Registros e Historial",
+      "currentRecords": "Registros Actuales",
+      "history": "Historial",
+      "resetDate": "Fecha de Restablecimiento",
+      "firstCountDate": "Primera Cuenta",
+      "lastCountDate": "Última Cuenta",
+      "totalRecords": "Total de Registros",
+      "auditoriumTotals": "Totales por Auditorio"
     },
     "doors": {
       "title": "Gestionar Puertas y Auditorios",
