@@ -1,12 +1,13 @@
 import DoorCounter from '@/app/components/DoorCounter';
-import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Link } from '@/i18n/routing';
 import { getDatabase } from '@/lib/mongodb';
 import { getTranslations } from 'next-intl/server';
 
 export default async function DoorPage({
   params,
 }: {
-  params: Promise<{ doorId: string }>;
+  params: Promise<{ doorId: string; locale: string }>;
 }) {
   const { doorId } = await params;
   const t = await getTranslations();

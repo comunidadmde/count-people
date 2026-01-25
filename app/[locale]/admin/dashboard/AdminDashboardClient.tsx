@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from '@/i18n/routing';
+import { Link } from '@/i18n/routing';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ValueGetterParams, ICellRendererParams } from 'ag-grid-community';
+import { useTranslations } from 'next-intl';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
@@ -35,7 +35,6 @@ interface DoorInfo {
 export default function AdminDashboardClient() {
   const t = useTranslations('admin.dashboard');
   const tCommon = useTranslations('common');
-  const locale = useLocale();
   const router = useRouter();
   const [doors, setDoors] = useState<DoorSummary[]>([]);
   const [allCounters, setAllCounters] = useState<CounterData[]>([]);
@@ -122,7 +121,7 @@ export default function AdminDashboardClient() {
         },
       },
     ],
-    [doorInfos, locale] // Include doorInfos and locale so column updates when doors are loaded or language changes
+    [doorInfos, t] // Include doorInfos and t so column updates when doors are loaded
   );
 
   // Default column properties

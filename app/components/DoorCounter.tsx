@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface DoorCounterProps {
   doorId: string;
@@ -25,6 +26,8 @@ export default function DoorCounter({
   doorName,
   initialCount = 0,
 }: DoorCounterProps) {
+  const t = useTranslations('door');
+  const tCommon = useTranslations('common');
   const [count, setCount] = useState(initialCount);
   const [isLoading, setIsLoading] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -394,7 +397,7 @@ export default function DoorCounter({
     const enteredPassword = passwordInput.value.trim();
     
     if (!enteredPassword) {
-      setPasswordError('Password is required');
+      setPasswordError(t('passwordRequired'));
       return;
     }
 
@@ -432,7 +435,7 @@ export default function DoorCounter({
       }
     } catch (error) {
       console.error('Error verifying password:', error);
-      setPasswordError('Failed to verify password. Please try again.');
+      setPasswordError(t('failedToVerify'));
     }
   };
 
@@ -497,7 +500,7 @@ export default function DoorCounter({
     // Check if name is set
     if (!userName || userName.trim() === '') {
       setShowNameInput(true);
-      alert('Please enter your name first');
+      alert(t('pleaseEnterName'));
       return;
     }
 
@@ -575,7 +578,7 @@ export default function DoorCounter({
         <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
           <form onSubmit={handlePasswordSubmit} className="space-y-3">
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Enter door password:
+              {t('enterDoorPassword')}
             </label>
             <div className="flex gap-2">
               <input
@@ -587,7 +590,7 @@ export default function DoorCounter({
                   setPassword(e.target.value);
                   setPasswordError('');
                 }}
-                placeholder="Password"
+                placeholder={t('passwordPlaceholder')}
                 required
                 className="flex-1 px-4 py-2 bg-white border-2 border-gray-400 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                 autoFocus
@@ -596,7 +599,7 @@ export default function DoorCounter({
                 type="submit"
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
               >
-                Verify
+                {tCommon('verify')}
               </button>
             </div>
             {passwordError && (
@@ -607,7 +610,7 @@ export default function DoorCounter({
       ) : (
         <div className="mb-4 text-center">
           <p className="text-sm text-gray-600">
-            Authenticated ✓
+            {tCommon('authenticated')} ✓
             <button
               onClick={() => {
                 setIsAuthenticated(false);
@@ -616,7 +619,7 @@ export default function DoorCounter({
               }}
               className="ml-2 text-blue-500 hover:text-blue-700 text-xs underline"
             >
-              Change Password
+              {tCommon('changePassword')}
             </button>
           </p>
         </div>
@@ -627,7 +630,7 @@ export default function DoorCounter({
         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <form onSubmit={handleNameSubmit} className="space-y-3">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Enter your name:
+              {t('enterYourName')}
             </label>
             <div className="flex gap-2">
               <input
@@ -635,7 +638,7 @@ export default function DoorCounter({
                 name="name"
                 type="text"
                 defaultValue={userName}
-                placeholder="Your name"
+                placeholder={t('yourName')}
                 required
                 className="flex-1 px-4 py-2 bg-white border-2 border-gray-400 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                 autoFocus
@@ -644,7 +647,7 @@ export default function DoorCounter({
                 type="submit"
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
               >
-                Save
+                {tCommon('save')}
               </button>
             </div>
           </form>
@@ -652,12 +655,12 @@ export default function DoorCounter({
       ) : (
         <div className="mb-4 text-center">
           <p className="text-sm text-gray-600">
-            Counting as: <span className="font-semibold text-blue-600">{userName}</span>
+            {t('countingAs')}: <span className="font-semibold text-blue-600">{userName}</span>
             <button
               onClick={handleNameChange}
               className="ml-2 text-blue-500 hover:text-blue-700 text-xs underline"
             >
-              Change
+              {tCommon('change')}
             </button>
           </p>
         </div>
@@ -679,7 +682,7 @@ export default function DoorCounter({
       {auditoriumTotal !== null && auditoriumName && (
         <div className="my-4 pt-4 border-t border-gray-200">
           <p className="text-l text-gray-400 text-center">
-            <span className="font-medium text-gray-500">{auditoriumName}</span> Total: <span className="font-semibold text-gray-600">{auditoriumTotal}</span>
+            <span className="font-medium text-gray-500">{auditoriumName}</span> {t('total')}: <span className="font-semibold text-gray-600">{auditoriumTotal}</span>
           </p>
         </div>
       )}
@@ -689,7 +692,7 @@ export default function DoorCounter({
         disabled={showNameInput || !isAuthenticated}
         className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-bold text-3xl py-12 px-6 rounded-xl transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 duration-200"
       >
-        {!isAuthenticated ? 'Enter Password First' : '+ Count Person'}
+        {!isAuthenticated ? tCommon('enterPassword') : `+ ${tCommon('countPerson')}`}
       </button>
 
       {/* Pending clicks indicator */}
@@ -723,7 +726,7 @@ export default function DoorCounter({
                 onClick={processQueue}
                 className="text-xs text-yellow-700 hover:text-yellow-900 underline font-medium"
               >
-                Sync Now
+                {tCommon('syncNow')}
               </button>
             )}
           </div>
@@ -732,7 +735,7 @@ export default function DoorCounter({
 
       {lastSaved && pendingClicks === 0 && (
         <p className="text-sm text-gray-500 mt-6 text-center">
-          ✓ Last saved: {lastSaved.toLocaleTimeString()}
+          ✓ {tCommon('lastSaved')}: {lastSaved.toLocaleTimeString()}
         </p>
       )}
     </div>

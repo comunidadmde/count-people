@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface DoorCounterDisplayProps {
   doorId: string;
@@ -9,6 +12,8 @@ export default function DoorCounterDisplay({
   doorId,
   doorName,
 }: DoorCounterDisplayProps) {
+  const t = useTranslations('common');
+
   return (
     <Link
       href={`/door/${doorId}`}
@@ -17,7 +22,7 @@ export default function DoorCounterDisplay({
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-800 mb-4">{doorName}</h2>
         <div className="flex items-center justify-center gap-2 text-blue-600 font-semibold text-lg">
-          <span>Go to Counter</span>
+          <span>{t('goToCounter')}</span>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>

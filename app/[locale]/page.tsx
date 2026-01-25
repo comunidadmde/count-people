@@ -1,5 +1,5 @@
-import DoorCounterDisplay from './components/DoorCounterDisplay';
-import Link from 'next/link';
+import DoorCounterDisplay from '../components/DoorCounterDisplay';
+import { Link } from '@/i18n/routing';
 import { getDatabase } from '@/lib/mongodb';
 import { getTranslations } from 'next-intl/server';
 

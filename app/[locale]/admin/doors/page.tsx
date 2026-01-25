@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useRouter } from '@/i18n/routing';
+import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 
 interface DoorInfo {
@@ -13,6 +13,7 @@ interface DoorInfo {
 }
 
 export default function DoorsManagementPage() {
+  const t = useTranslations();
   const router = useRouter();
   const [doors, setDoors] = useState<DoorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,8 +103,6 @@ export default function DoorsManagementPage() {
     setEditingDoor(null);
     setFormData({ doorId: '', doorName: '', auditorium: '', password: '' });
   };
-
-  const t = useTranslations();
 
   if (isLoading) {
     return (
