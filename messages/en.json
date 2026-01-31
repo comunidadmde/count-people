@@ -44,6 +44,7 @@
   "display": {
     "title": "Room Totals",
     "subtitle": "Live occupancy — updates every few seconds",
+    "showingTotalPeopleIn": "Total amount of people in",
     "people": "people",
     "lastUpdated": "Last updated",
     "noRooms": "No rooms with counts yet. Counts will appear here as people are counted.",
@@ -63,6 +64,7 @@
   "door": {
     "counterView": "Door Counter View",
     "backToHome": "← Back to Home",
+    "showingTotalPeopleAtDoor": "Total amount of people counted at this door.",
     "countingAs": "Counting as",
     "enterYourName": "Enter your name",
     "yourName": "Your name",

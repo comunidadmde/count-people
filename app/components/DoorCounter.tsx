@@ -660,6 +660,7 @@ export default function DoorCounter({
       )}
       
       <div className="text-center mb-10">
+        <p className="text-sm text-gray-500 mb-2">{t('showingTotalPeopleAtDoor')}</p>
         <div className="text-8xl font-bold text-blue-600 mb-3">
           {count}
         </div>
@@ -667,6 +668,11 @@ export default function DoorCounter({
         {pendingClicks > 0 && (
           <p className="text-xs text-yellow-600 mt-1">
             ({count} saved + {pendingClicks} pending)
+          </p>
+        )}
+        {lastSaved && pendingClicks === 0 && (
+          <p className="text-xs text-gray-400 mt-3">
+            {tCommon('lastSaved')}: {lastSaved.toLocaleTimeString()}
           </p>
         )}
       </div>
@@ -726,11 +732,6 @@ export default function DoorCounter({
         </div>
       )}
 
-      {lastSaved && pendingClicks === 0 && (
-        <p className="text-sm text-gray-500 mt-6 text-center">
-          ✓ {tCommon('lastSaved')}: {lastSaved.toLocaleTimeString()}
-        </p>
-      )}
     </div>
   );
 }

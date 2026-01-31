@@ -44,6 +44,7 @@
   "display": {
     "title": "Totales por Sala",
     "subtitle": "Ocupación en vivo — se actualiza cada pocos segundos",
+    "showingTotalPeopleIn": "Total de personas en",
     "people": "personas",
     "lastUpdated": "Última actualización",
     "noRooms": "Aún no hay salas con conteos. Los totales aparecerán cuando se cuente gente.",
@@ -63,6 +64,7 @@
   "door": {
     "counterView": "Vista del Contador de Puerta",
     "backToHome": "← Volver al Inicio",
+    "showingTotalPeopleAtDoor": "Total de personas contadas en esta puerta.",
     "countingAs": "Contando como",
     "enterYourName": "Ingresa tu nombre",
     "yourName": "Tu nombre",
