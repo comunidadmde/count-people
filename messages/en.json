@@ -41,6 +41,14 @@
     "optional": "Optional",
     "goToCounter": "Go to Counter"
   },
+  "display": {
+    "title": "Room Totals",
+    "subtitle": "Live occupancy — updates every few seconds",
+    "people": "people",
+    "lastUpdated": "Last updated",
+    "noRooms": "No rooms with counts yet. Counts will appear here as people are counted.",
+    "error": "Unable to load room totals"
+  },
   "home": {
     "title": "Comunidad's Door Counter System",
     "subtitle": "Track people count for multiple doors and auditoriums",
@@ -49,7 +57,8 @@
     "instruction2": "On the counter page, click the \"Count Person\" button to increment",
     "instruction3": "All clicks are automatically saved, even with slow internet connections",
     "instruction4": "Each door maintains its own independent counter",
-    "instruction5": "Contact an administrator to reset counters or view detailed statistics"
+    "instruction5": "Contact an administrator to reset counters or view detailed statistics",
+    "viewDisplay": "View Room Totals Display"
   },
   "door": {
     "counterView": "Door Counter View",

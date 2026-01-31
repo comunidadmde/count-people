@@ -38,7 +38,13 @@ export default async function Home() {
           </p>
         </div>
 
-        <div className="flex justify-center gap-4 mb-8">
+        <div className="flex justify-center gap-4 mb-8 flex-wrap">
+          <Link
+            href="/display"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            {t('home.viewDisplay')}
+          </Link>
           <Link
             href="/admin/dashboard"
             className="px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg transition-colors"

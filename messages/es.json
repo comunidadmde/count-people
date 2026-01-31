@@ -41,6 +41,14 @@
     "optional": "Opcional",
     "goToCounter": "Ir al Contador"
   },
+  "display": {
+    "title": "Totales por Sala",
+    "subtitle": "Ocupación en vivo — se actualiza cada pocos segundos",
+    "people": "personas",
+    "lastUpdated": "Última actualización",
+    "noRooms": "Aún no hay salas con conteos. Los totales aparecerán cuando se cuente gente.",
+    "error": "No se pueden cargar los totales"
+  },
   "home": {
     "title": "Sistema de Contador de Puertas de Comunidad",
     "subtitle": "Rastrea el conteo de personas para múltiples puertas y auditorios",
@@ -49,7 +57,8 @@
     "instruction2": "En la página del contador, haz clic en el botón \"Contar Persona\" para incrementar",
     "instruction3": "Todos los clics se guardan automáticamente, incluso con conexiones de internet lentas",
     "instruction4": "Cada puerta mantiene su propio contador independiente",
-    "instruction5": "Contacta a un administrador para restablecer contadores o ver estadísticas detalladas"
+    "instruction5": "Contacta a un administrador para restablecer contadores o ver estadísticas detalladas",
+    "viewDisplay": "Ver pantalla de totales por sala"
   },
   "door": {
     "counterView": "Vista del Contador de Puerta",

@@ -29,7 +29,6 @@ export default function DoorCounter({
   const t = useTranslations('door');
   const tCommon = useTranslations('common');
   const [count, setCount] = useState(initialCount);
-  const [isLoading, setIsLoading] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [showNameInput, setShowNameInput] = useState(false);
