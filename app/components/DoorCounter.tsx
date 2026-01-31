@@ -306,7 +306,7 @@ export default function DoorCounter({
           .then((result) => {
             if (result.success && result.data) {
               const serverCount = result.data.count || 0;
-              setCount(serverCount + pendingCount);
+              setCount(serverCount); // Only show backend count to avoid jumps
               // Update auditorium total
               if (result.data.auditoriumTotal !== null && result.data.auditoriumTotal !== undefined) {
                 setAuditoriumTotal(result.data.auditoriumTotal);
@@ -364,13 +364,7 @@ export default function DoorCounter({
         const countResult = await countResponse.json();
         if (countResult.success && countResult.data) {
           const serverCount = countResult.data.count || 0;
-          
-          // Only update if we don't have pending clicks
-          if (clickQueueRef.current.length === 0) {
-            setCount(serverCount);
-          } else {
-            setCount(serverCount + clickQueueRef.current.length);
-          }
+          setCount(serverCount); // Only show backend count to avoid jumps
 
           // Update auditorium total and name
           if (countResult.data.auditoriumTotal !== null && countResult.data.auditoriumTotal !== undefined) {
@@ -667,7 +661,7 @@ export default function DoorCounter({
       
       <div className="text-center mb-10">
         <div className="text-8xl font-bold text-blue-600 mb-3">
-          {count + pendingClicks}
+          {count}
         </div>
         <p className="text-lg text-gray-500">Total Count</p>
         {pendingClicks > 0 && (
